@@ -1,0 +1,55 @@
+import sqlite3
+import pandas as pd
+
+connection = sqlite3.connect("stockmanager")
+cursor = connection.cursor()
+
+# cursor.execute(
+#     """CREATE TABLE IF NOT EXISTS order_saves
+#             (date TEXT NOT NULL,
+#             customer_id INT NOT NULL,
+#             orders TEXT NOT NULL,
+#             cost INT NOT NULL)"""
+# )
+
+# connection.execute(
+#     """CREATE TABLE IF NOT EXISTS june
+#         (date TEXT NOT NULL,
+#         customer_id INT NOT NULL,
+#         orders TEXT NOT NULL,
+#         cost INT NOT NULL)"""
+# )
+
+# connection.execute(
+#     """
+#           INSERT INTO june (date, customer_id, orders, cost)
+
+#                 VALUES
+#                 ('2022-05-29', 0001, "Filter Coffee", 20),
+#                 ('2022-05-29', 0002, "Filter Coffee", 20),
+#                 ('2022-05-29', 0003, "Americano", 18),
+#                 ('2022-05-29', 0004, "Espresso", 13),
+#                 ('2022-05-29', 0005, "Filter Coffee", 20)
+#           """
+# )
+
+
+# get the nema of columns
+def table_columns(table_name):
+    curs = connection.cursor()
+    sql = "select * from %s where 1=0;" % table_name
+    curs.execute(sql)
+    return [d[0] for d in curs.description]
+
+
+print(table_columns("june"))
+
+cursor.execute("SELECT * FROM june")
+
+df = pd.DataFrame(cursor.fetchall(), columns=table_columns("june"))
+# print(list(df.columns))
+print(df)
+
+
+connection.commit()
+connection.close()

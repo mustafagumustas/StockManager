@@ -2,7 +2,7 @@ import sys
 import PyQt5
 from PyQt5.uic import loadUi
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
 import pandas as pd
 import csv
 import os
@@ -15,48 +15,47 @@ import os
 # just call above file and use Orders column and modify it with buttons
 
 
-class Main_Page(QDialog):
+class Main_Page(QtWidgets.QDialog):
     def __init__(self):
-        super(Main_Page, self).__init__()
+        super().__init__()
+        # QtCore.QAbstractTableModel.__init__(self, parent)
+
         loadUi("order.ui", self)
         # bu kısımda müşteri siparişlerinin kaydedileceği dosya init edilecek
 
         # order list
-        self.tableWidget = QTableWidget()
-        self.tableWidget.setColumnWidth(0, 135)
-        self.tableWidget.setColumnWidth(1, 25)
-        self.tableWidget.setColumnWidth(2, 110)
-        self.b_filtercoffee.clicked.connect(self.order_filter)
-        self.b_espresso.clicked.connect(self.order_esp)
-
-    def order_filter(self):
-        print("filter coffee")
-        # self.tableWidget.setRowCount(50)
-        tablerow = 0
-        # self.tableWidget.insertRow(tablerow)
-        rowCount = self.tableWidget.rowCount()
-        self.tableWidget.insertRow(0)
-        self.tableWidget.setItem(
-            tablerow, 0, QTableWidgetItem(self.b_filtercoffee.text())
-        )
-        print(self.b_filtercoffee.text())
-
-    def order_esp(self):
-        print("espresso")
-
-    def OpenFile(self):
-        print("works")
-        try:
-            self.all_data = pd.read_csv(
-                "/Volumes/GoogleDrive/My Drive/Python/side_projects/StockManager/june.csv"
-            )
-        except:
-            print(
-                "/Volumes/GoogleDrive/My Drive/Python/side_projects/StockManager/june.csv"
-            )
+        data = pd.read_csv("june.csv")
+        self.model = TableModel(data)
+        self.tableView.setModel(self.model)
 
 
-app = QApplication(sys.argv)
+class TableModel(QtCore.QAbstractTableModel):
+    def __init__(self, data):
+        super(TableModel, self).__init__()
+        self._data = data
+
+    def data(self, index, role):
+        if role == Qt.DisplayRole:
+            value = self._data.iloc[index.row(), index.column()]
+            return str(value)
+
+    def rowCount(self, index):
+        return self._data.shape[0]
+
+    def columnCount(self, index):
+        return self._data.shape[1]
+
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._data.columns[section])
+
+            if orientation == Qt.Vertical:
+                return str(self._data.index[section])
+
+
+app = QtWidgets.QApplication(sys.argv)
 Main_Page = Main_Page()
 widget = QtWidgets.QStackedWidget()
 widget.addWidget(Main_Page)
