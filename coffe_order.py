@@ -25,20 +25,40 @@ class Main_Page(QDialog):
     def __init__(self):
         super().__init__()
         loadUi("order.ui", self)
-        # self.orders_table = QTableWidget()
-        self.loaddata()
-
-    def loaddata(self):
         # reading saves of customer orders
-        # converting customer order number into string, we want 0001 not 1
-        df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+        # converting customer order_id into string, we want 0001 not 1
+        self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+        self.load_order()
+        # in order to create only one connect line
+        # we need to iterate button names
+        buttons = {
+            self.b_filtercoffee,
+            self.b_espresso,
+            self.b_americano,
+            self.b_latte,
+        }
+        for button in buttons:
+            button.clicked.connect(self.order_click)
+
+    def order_click(self):
+        ordered = self.sender()
+        self.df["orders"][self.df["#"] == self.order_id.text()] += [
+            f",{ordered.text()}"
+        ]
+        self.load_order()
+
+    def load_order(self):
         row = 0
-        self.tableWidget.setRowCount(3)
-        print(self.order_id.text(), df["#"][row])
-        current_order = df["orders"][df["#"] == self.order_id.text()].to_list()
-        print(current_order)
+        # getting orders from df
+        current_order = (
+            self.df["orders"][self.df["#"] == self.order_id.text()]
+            .to_list()[0]
+            .split(",")
+        )
+        self.tableWidget.setRowCount(len(current_order))
+        #  populating tablewidget
         for i in range(len(current_order)):
-            for order in current_order[0].split(","):
+            for order in current_order:
                 self.tableWidget.setItem(row, 0, QTableWidgetItem(str(order)))
                 row += 1
 
