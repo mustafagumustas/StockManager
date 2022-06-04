@@ -28,6 +28,9 @@ class Main_Page(QDialog):
         # reading saves of customer orders
         # converting customer order_id into string, we want 0001 not 1
         self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+        self.cost_df = pd.read_csv(
+            "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
+        )
         self.load_order()
         # in order to create only one connect line
         # we need to iterate button names
@@ -57,10 +60,15 @@ class Main_Page(QDialog):
         )
         self.tableWidget.setRowCount(len(current_order))
         #  populating tablewidget
-        for i in range(len(current_order)):
-            for order in current_order:
-                self.tableWidget.setItem(row, 0, QTableWidgetItem(str(order)))
-                row += 1
+        total = 0
+        for order in current_order:
+            self.tableWidget.setItem(row, 0, QTableWidgetItem(str(order)))
+            new_cost = self.cost_df["cost"][self.cost_df["products"] == order].values[0]
+            total += int(new_cost)
+            self.tableWidget.setItem(row, 1, QTableWidgetItem(str(new_cost)))
+            self.check.setText(str(total))
+            print(total)
+            row += 1
 
 
 app = QApplication(sys.argv)
