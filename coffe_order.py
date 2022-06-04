@@ -2,68 +2,48 @@ import sys
 import PyQt5
 from PyQt5.uic import loadUi
 from PyQt5 import QtWidgets, QtCore, QtGui
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import *
 import pandas as pd
-import csv
 import os
 
-# SQL ile tarih barındıran bir colon olacak
-# WHERE DATE ile o günün siparişleri getirilecek
-# ancak yine  müşteri numarası olacak sadece birden fazla dosya açılmayacak
-#   Date    |   Customer #  |               Orders                |   Cost    |
-# 16.05.2022|      0002     | {"filter coffee": 2, "browinie": 1} |    20$    |
-# just call above file and use Orders column and modify it with buttons
 
-
-class Main_Page(QtWidgets.QDialog):
+class TableWidget(QTableWidget):
     def __init__(self):
         super().__init__()
-        # QtCore.QAbstractTableModel.__init__(self, parent)
+        df = pd.read_csv("june.csv")
 
+    def _addRow(self):
+        rowCount = self.rowCount()
+        self.insertRow(rowCount)
+
+    def _removeRow(self):
+        if self.rowCount() > 0:
+            self.removeRow(self.rowCount() - 1)
+
+
+class Main_Page(QDialog):
+    def __init__(self):
+        super().__init__()
         loadUi("order.ui", self)
-        # bu kısımda müşteri siparişlerinin kaydedileceği dosya init edilecek
+        # self.orders_table = QTableWidget()
+        self.loaddata()
 
-        # order list
-        data = pd.read_csv("june.csv")
-        self.model = TableModel(data)
-        self.tableView.setModel(self.model)
-
-
-class TableModel(QtCore.QAbstractTableModel):
-    def __init__(self, data):
-        super(TableModel, self).__init__()
-        self._data = data
-
-    def data(self, index, role):
-        if role == Qt.DisplayRole:
-            value = self._data.iloc[index.row(), index.column()]
-            return str(value)
-
-    def rowCount(self, index):
-        return self._data.shape[0]
-
-    def columnCount(self, index):
-        return self._data.shape[1]
-
-    def headerData(self, section, orientation, role):
-        # section is the index of the column/row.
-        if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                return str(self._data.columns[section])
-
-            if orientation == Qt.Vertical:
-                return str(self._data.index[section])
+    def loaddata(self):
+        # reading saves of customer orders
+        # converting customer order number into string, we want 0001 not 1
+        df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+        row = 0
+        self.tableWidget.setRowCount(3)
+        print(self.order_id.text(), df["#"][row])
+        current_order = df["orders"][df["#"] == self.order_id.text()].to_list()
+        print(current_order)
+        for i in range(len(current_order)):
+            for order in current_order[0].split(","):
+                self.tableWidget.setItem(row, 0, QTableWidgetItem(str(order)))
+                row += 1
 
 
-app = QtWidgets.QApplication(sys.argv)
+app = QApplication(sys.argv)
 Main_Page = Main_Page()
-widget = QtWidgets.QStackedWidget()
-widget.addWidget(Main_Page)
-widget.setFixedHeight(650)
-widget.setFixedWidth(850)
-widget.show()
-
-try:
-    sys.exit(app.exec_())
-except:
-    print("Exiting")
+Main_Page.show()
+sys.exit(app.exec_())
