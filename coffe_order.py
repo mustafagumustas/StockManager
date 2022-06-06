@@ -1,37 +1,31 @@
 import sys
-import PyQt5
 from PyQt5.uic import loadUi
-from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtWidgets import *
 import pandas as pd
-import os
+import datetime
+
+# nan degerleri oldugu icin hata veriyor
+# csv ye hemen date ve # eklenmemeli
+# bunun icin bir yol bul!
 
 
-class TableWidget(QTableWidget):
+class OrderPage(QDialog):
     def __init__(self):
         super().__init__()
-        df = pd.read_csv("june.csv")
-
-    def _addRow(self):
-        rowCount = self.rowCount()
-        self.insertRow(rowCount)
-
-    def _removeRow(self):
-        if self.rowCount() > 0:
-            self.removeRow(self.rowCount() - 1)
-
-
-class Main_Page(QDialog):
-    def __init__(self):
-        super().__init__()
+        self.w = None
         loadUi("order.ui", self)
+        self.row = 0
         # reading saves of customer orders
         # converting customer order_id into string, we want 0001 not 1
         self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+
+        # creating customer id in 0000 format then changing label to it
+        self.new_customer_id = str(int(self.df["#"].iloc[[-1]]) + 1).zfill(4)
+        self.order_id.setText(self.new_customer_id)
+
         self.cost_df = pd.read_csv(
             "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
         )
-        self.load_order()
         # in order to create only one connect line
         # we need to iterate button names
         buttons = {
@@ -43,15 +37,71 @@ class Main_Page(QDialog):
         for button in buttons:
             button.clicked.connect(self.order_click)
 
+        self.total = 0
+        self.ok_button.clicked.connect(self.ok_)
+
+    def ok_(self):
+        self.df["cost"].mask(
+            ((self.df["#"] == 2) & (self.df["date"] == self.date)),
+            self.total,
+            inplace=True,
+        )
+        MainPage.save_csv()
+        self.close
+
     def order_click(self):
+        # get the name of button triggered this function
         ordered = self.sender()
-        self.df["orders"][self.df["#"] == self.order_id.text()] += [
-            f",{ordered.text()}"
-        ]
+
+        # todays date
+        self.date = datetime.datetime.today().strftime("%d-%m-%Y")
+        # algorithm that detects where to write current order
+        # if there is no order today, means its first order 0001 and todays date
+        if (self.date in self.df["date"].values) is False:
+            new_df = pd.DataFrame(
+                {
+                    "date": [str(self.date)],
+                    "#": ["0001"],
+                    "orders": f"{ordered.text()}",
+                    "cost": [0],
+                }
+            )
+            self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
+        else:  # if not first check
+            if self.df["cost"].iloc[[-1]].values[0] == 0:
+                last_order = list(
+                    self.df["orders"]
+                    .loc[
+                        (
+                            (self.df["date"] == self.date)
+                            & (self.df["#"] == self.new_customer_id)
+                        )
+                    ]
+                    .values
+                )
+                last_order.append(f"{ordered.text()}")
+                self.df.loc[
+                    (
+                        (self.df["date"] == self.date)
+                        & (self.df["#"] == self.new_customer_id)
+                    ),
+                    "orders",
+                ] = ",".join(last_order)
+            else:
+                new_df = pd.DataFrame(
+                    {
+                        "date": [str(self.date)],
+                        "#": [self.new_customer_id],
+                        "orders": [ordered.text()],
+                        "cost": [0],
+                    }
+                )
+                self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0,)
+        print(self.df)
         self.load_order()
 
     def load_order(self):
-        row = 0
+        print(self.row)
         # getting orders from df
         current_order = (
             self.df["orders"][self.df["#"] == self.order_id.text()]
@@ -60,18 +110,34 @@ class Main_Page(QDialog):
         )
         self.tableWidget.setRowCount(len(current_order))
         #  populating tablewidget
-        total = 0
         for order in current_order:
-            self.tableWidget.setItem(row, 0, QTableWidgetItem(str(order)))
+            self.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
             new_cost = self.cost_df["cost"][self.cost_df["products"] == order].values[0]
-            total += int(new_cost)
-            self.tableWidget.setItem(row, 1, QTableWidgetItem(str(new_cost)))
-            self.check.setText(str(total))
-            print(total)
-            row += 1
+            self.total += int(new_cost)
+            self.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
+            self.check.setText(str(self.total))
+            self.row += 1
+
+
+class MainPage(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+        self.w = None
+        loadUi("MainPage.ui", self)
+        self.siparisgir.clicked.connect(self.new_order)
+
+    def new_order(self):
+        if self.w is None:
+            self.w = OrderPage()
+        self.w.show()
+
+    def save_csv(self):
+        # saving orders into csv with given orders and total cost info
+        self.df.to_csv("june.csv", sep=";", index=False)
 
 
 app = QApplication(sys.argv)
-Main_Page = Main_Page()
-Main_Page.show()
+MainPage = MainPage()
+MainPage.show()
 sys.exit(app.exec_())
