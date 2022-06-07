@@ -1,6 +1,7 @@
 import sys
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
+from PyQt5.QtCore import pyqtSignal
 import pandas as pd
 import datetime
 
@@ -10,11 +11,12 @@ import datetime
 
 
 class OrderPage(QDialog):
+    window_closed = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.w = None
         loadUi("order.ui", self)
-
         self.order_id.setText(MainPage.df["#"].iloc[[-1]].values[0])
 
         self.cost_df = pd.read_csv(
@@ -34,14 +36,34 @@ class OrderPage(QDialog):
         self.ok_button.clicked.connect(self.ok_)
 
     def ok_(self):
-        print("ok clicked")
         MainPage.df["cost"].mask(
             ((MainPage.df["#"] == 2) & (MainPage.df["date"] == MainPage.date)),
-            self.total,
+            MainPage.total,
             inplace=True,
         )
+
+        last_order = str(MainPage.df["orders"].iloc[[-1]].values[0]).split(",")
+        last_order = [i for i in last_order if i != ""]
+        MainPage.df.loc[
+            (
+                (MainPage.df["date"] == MainPage.date)
+                & (MainPage.df["#"] == MainPage.new_customer_id)
+            ),
+            "orders",
+        ] = ",".join(last_order)
+        MainPage.df.loc[
+            (
+                (MainPage.df["date"] == MainPage.date)
+                & (MainPage.df["#"] == MainPage.new_customer_id)
+            ),
+            "cost",
+        ] = str(MainPage.total)
         MainPage.df.to_csv("june.csv", sep=";", index=False)
         self.close()
+
+    def closeEvent(self, event):
+        self.window_closed.emit()
+        event.accept()
 
     def order_click(self):
         # get the name of button triggered this function
@@ -64,8 +86,6 @@ class OrderPage(QDialog):
             ),
             "orders",
         ] = ",".join(last_order)
-
-        print(MainPage.df)
         self.load_order()
 
     def load_order(self):
@@ -82,14 +102,13 @@ class OrderPage(QDialog):
         self.tableWidget.setRowCount(len(current_order))
         #  populating tablewidget
         self.row = 0
-        self.total = 0
         for order in current_order:
             self.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
             new_cost = self.cost_df["cost"][self.cost_df["products"] == order].values[0]
-            self.total += int(new_cost)
+            MainPage.total += int(new_cost)
 
             self.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
-            self.check.setText(str(self.total))
+            self.check.setText(str(MainPage.total))
             self.row += 1
 
 
@@ -97,7 +116,6 @@ class MainPage(QDialog):
     def __init__(self):
         super().__init__()
         self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
-        self.w = None
         loadUi("MainPage.ui", self)
         self.siparisgir.clicked.connect(self.new_order)
 
@@ -107,8 +125,9 @@ class MainPage(QDialog):
         self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
         # todays date
         self.date = datetime.datetime.today().strftime("%d-%m-%Y")
+        self.total = 0
         # creating customer id in 0000 format then changing label to it
-
+        self.new_customer_id = ""
         if (self.date in self.df["date"].values) is False:
             new_df = pd.DataFrame(
                 {"date": [str(self.date)], "#": ["0001"], "orders": "", "cost": [0],}
@@ -126,9 +145,11 @@ class MainPage(QDialog):
                 }
             )
             self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
-        if self.w is None:
-            self.w = OrderPage()
-        self.w.show()
+        self.openWin()
+
+    def openWin(self):
+        self.win = OrderPage()
+        self.win.show()
 
     def save_csv(self):
         # saving orders into csv with given orders and total cost info
