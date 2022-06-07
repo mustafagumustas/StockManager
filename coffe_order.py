@@ -14,14 +14,8 @@ class OrderPage(QDialog):
         super().__init__()
         self.w = None
         loadUi("order.ui", self)
-        self.row = 0
-        # reading saves of customer orders
-        # converting customer order_id into string, we want 0001 not 1
-        self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
 
-        # creating customer id in 0000 format then changing label to it
-        self.new_customer_id = str(int(self.df["#"].iloc[[-1]]) + 1).zfill(4)
-        self.order_id.setText(self.new_customer_id)
+        self.order_id.setText(MainPage.df["#"].iloc[[-1]].values[0])
 
         self.cost_df = pd.read_csv(
             "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
@@ -37,83 +31,63 @@ class OrderPage(QDialog):
         for button in buttons:
             button.clicked.connect(self.order_click)
 
-        self.total = 0
         self.ok_button.clicked.connect(self.ok_)
 
     def ok_(self):
-        self.df["cost"].mask(
-            ((self.df["#"] == 2) & (self.df["date"] == self.date)),
+        print("ok clicked")
+        MainPage.df["cost"].mask(
+            ((MainPage.df["#"] == 2) & (MainPage.df["date"] == MainPage.date)),
             self.total,
             inplace=True,
         )
-        MainPage.save_csv()
-        self.close
+        MainPage.df.to_csv("june.csv", sep=";", index=False)
+        self.close()
 
     def order_click(self):
         # get the name of button triggered this function
         ordered = self.sender()
+        last_order = list(
+            MainPage.df["orders"]
+            .loc[
+                (
+                    (MainPage.df["date"] == MainPage.date)
+                    & (MainPage.df["#"] == MainPage.new_customer_id)
+                )
+            ]
+            .values
+        )
+        last_order.append(f"{ordered.text()}")
+        MainPage.df.loc[
+            (
+                (MainPage.df["date"] == MainPage.date)
+                & (MainPage.df["#"] == MainPage.new_customer_id)
+            ),
+            "orders",
+        ] = ",".join(last_order)
 
-        # todays date
-        self.date = datetime.datetime.today().strftime("%d-%m-%Y")
-        # algorithm that detects where to write current order
-        # if there is no order today, means its first order 0001 and todays date
-        if (self.date in self.df["date"].values) is False:
-            new_df = pd.DataFrame(
-                {
-                    "date": [str(self.date)],
-                    "#": ["0001"],
-                    "orders": f"{ordered.text()}",
-                    "cost": [0],
-                }
-            )
-            self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
-        else:  # if not first check
-            if self.df["cost"].iloc[[-1]].values[0] == 0:
-                last_order = list(
-                    self.df["orders"]
-                    .loc[
-                        (
-                            (self.df["date"] == self.date)
-                            & (self.df["#"] == self.new_customer_id)
-                        )
-                    ]
-                    .values
-                )
-                last_order.append(f"{ordered.text()}")
-                self.df.loc[
-                    (
-                        (self.df["date"] == self.date)
-                        & (self.df["#"] == self.new_customer_id)
-                    ),
-                    "orders",
-                ] = ",".join(last_order)
-            else:
-                new_df = pd.DataFrame(
-                    {
-                        "date": [str(self.date)],
-                        "#": [self.new_customer_id],
-                        "orders": [ordered.text()],
-                        "cost": [0],
-                    }
-                )
-                self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0,)
-        print(self.df)
+        print(MainPage.df)
         self.load_order()
 
     def load_order(self):
-        print(self.row)
         # getting orders from df
         current_order = (
-            self.df["orders"][self.df["#"] == self.order_id.text()]
+            MainPage.df["orders"][
+                (MainPage.df["#"] == self.order_id.text())
+                & (MainPage.df["date"] == MainPage.date)
+            ]
             .to_list()[0]
             .split(",")
         )
+        current_order = [i for i in current_order if i != ""]
         self.tableWidget.setRowCount(len(current_order))
         #  populating tablewidget
+        self.row = 0
+        self.total = 0
         for order in current_order:
             self.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
             new_cost = self.cost_df["cost"][self.cost_df["products"] == order].values[0]
             self.total += int(new_cost)
+
             self.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
             self.check.setText(str(self.total))
             self.row += 1
@@ -128,6 +102,30 @@ class MainPage(QDialog):
         self.siparisgir.clicked.connect(self.new_order)
 
     def new_order(self):
+        # reading saves of customer orders
+        # converting customer order_id into string, we want 0001 not 1
+        self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+        # todays date
+        self.date = datetime.datetime.today().strftime("%d-%m-%Y")
+        # creating customer id in 0000 format then changing label to it
+
+        if (self.date in self.df["date"].values) is False:
+            new_df = pd.DataFrame(
+                {"date": [str(self.date)], "#": ["0001"], "orders": "", "cost": [0],}
+            )
+            self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
+            self.new_customer_id = str("0001").zfill(4)
+        else:
+            self.new_customer_id = str(int(self.df["#"].iloc[[-1]]) + 1).zfill(4)
+            new_df = pd.DataFrame(
+                {
+                    "date": [str(self.date)],
+                    "#": [str(self.new_customer_id)],
+                    "orders": "",
+                    "cost": [0],
+                }
+            )
+            self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
         if self.w is None:
             self.w = OrderPage()
         self.w.show()
