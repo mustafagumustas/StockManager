@@ -2,3 +2,10 @@ date;#;orders;cost
 04-06-2022;0001;Filter Coffee,Filter Coffee,Brownie,Espresso,Americano,Latte;20.0
 05-06-2022;0002;Filter Coffee;8.0
 06-06-2022;0001;Filter Coffee,Espresso;8.0
+07-06-2022;0001;,Espresso,Americano;0.0
+07-06-2022;0002;,Espresso,Filter Coffee,Filter Coffee,Filter Coffee,Filter Coffee,Filter Coffee;0.0
+07-06-2022;0003;,Espresso,Filter Coffee;0.0
+07-06-2022;0004;,Espresso,Espresso;0.0
+07-06-2022;0005;,Filter Coffee,Espresso,Latte;0.0
+07-06-2022;0006;,Filter Coffee,Espresso,Americano,Latte;0.0
+07-06-2022;0007;,Espresso,Filter Coffee,Americano;0.0
