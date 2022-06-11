@@ -1,7 +1,8 @@
 import sys
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QIcon
 import pandas as pd
 import datetime
 
@@ -34,6 +35,7 @@ class OrderPage(QDialog):
             button.clicked.connect(self.order_click)
 
         self.ok_button.clicked.connect(self.ok_)
+        self.delete_button.clicked.connect(self.delete_button_clicked)
 
     def ok_(self):
         MainPage.df["cost"].mask(
@@ -100,16 +102,42 @@ class OrderPage(QDialog):
         )
         current_order = [i for i in current_order if i != ""]
         self.tableWidget.setRowCount(len(current_order))
+        self.tableWidget.setColumnCount(2)
+        self.tableWidget.setHorizontalHeaderLabels(["orders", "cost"])
         #  populating tablewidget
         self.row = 0
+        ttll = 0
         for order in current_order:
             self.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
             new_cost = self.cost_df["cost"][self.cost_df["products"] == order].values[0]
-            MainPage.total += int(new_cost)
+            ttll += int(new_cost)
+            MainPage.total = ttll
 
             self.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
             self.check.setText(str(MainPage.total))
             self.row += 1
+
+    def delete_button_clicked(self):
+        if self.tableWidget.selectedIndexes():
+            row = self.tableWidget.currentIndex().row()
+        else:
+            row = self.tableWidget.rowCount() - 1
+        if row >= 0:
+            self.tableWidget.removeRow(row)
+        print(row)
+        orders = list(MainPage.df["orders"].iloc[[-1]])[0].split(",")
+        orders = [i for i in orders if i != ""]
+        print(orders)
+        del orders[row]
+        MainPage.df.loc[
+            (
+                (MainPage.df["date"] == MainPage.date)
+                & (MainPage.df["#"] == MainPage.new_customer_id)
+            ),
+            "orders",
+        ] = ",".join(orders)
+        self.load_order()
+        print(orders)
 
 
 class MainPage(QDialog):
@@ -117,6 +145,7 @@ class MainPage(QDialog):
         super().__init__()
         self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
         loadUi("MainPage.ui", self)
+        self.setWindowTitle("StockManager")
         self.siparisgir.clicked.connect(self.new_order)
 
     def new_order(self):
@@ -156,7 +185,9 @@ class MainPage(QDialog):
         self.df.to_csv("june.csv", sep=";", index=False)
 
 
-app = QApplication(sys.argv)
-MainPage = MainPage()
-MainPage.show()
-sys.exit(app.exec_())
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    app.setWindowIcon(QIcon("logo.jpg"))
+    MainPage = MainPage()
+    MainPage.show()
+    sys.exit(app.exec_())
