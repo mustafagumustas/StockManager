@@ -11,6 +11,18 @@ import datetime
 # bunun icin bir yol bul!
 
 
+class Stock_Editor:
+    def __init__(self):
+        super().__init__()
+        self.w = None
+        loadUi("stok.ui", self)
+        rowPosition = self.table.rowCount()
+        self.add_product.clicked.connect(self.add_row)
+
+    def add_row(self):
+        self.tableWidget.insertRow(self.rowPosition)
+
+
 class OrderPage(QDialog):
     window_closed = pyqtSignal()
 
@@ -19,6 +31,8 @@ class OrderPage(QDialog):
         self.w = None
         loadUi("order.ui", self)
         self.order_id.setText(MainPage.df["#"].iloc[[-1]].values[0])
+        self.tableWidget.setColumnWidth(0, 250)
+        self.tableWidget.setColumnWidth(1, 45)
 
         self.cost_df = pd.read_csv(
             "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
@@ -36,6 +50,7 @@ class OrderPage(QDialog):
 
         self.ok_button.clicked.connect(self.ok_)
         self.delete_button.clicked.connect(self.delete_button_clicked)
+        self.cancel_button.clicked.connect(self.closeEvent)
 
     def ok_(self):
         MainPage.df["cost"].mask(
@@ -63,9 +78,8 @@ class OrderPage(QDialog):
         MainPage.df.to_csv("june.csv", sep=";", index=False)
         self.close()
 
-    def closeEvent(self, event):
-        self.window_closed.emit()
-        event.accept()
+    def closeEvent(self):
+        self.close()
 
     def order_click(self):
         # get the name of button triggered this function
@@ -124,10 +138,8 @@ class OrderPage(QDialog):
             row = self.tableWidget.rowCount() - 1
         if row >= 0:
             self.tableWidget.removeRow(row)
-        print(row)
         orders = list(MainPage.df["orders"].iloc[[-1]])[0].split(",")
         orders = [i for i in orders if i != ""]
-        print(orders)
         del orders[row]
         MainPage.df.loc[
             (
@@ -137,7 +149,6 @@ class OrderPage(QDialog):
             "orders",
         ] = ",".join(orders)
         self.load_order()
-        print(orders)
 
 
 class MainPage(QDialog):
@@ -147,6 +158,7 @@ class MainPage(QDialog):
         loadUi("MainPage.ui", self)
         self.setWindowTitle("StockManager")
         self.siparisgir.clicked.connect(self.new_order)
+        self.siparisgoruntule.clicked(print("hey"))
 
     def new_order(self):
         # reading saves of customer orders
