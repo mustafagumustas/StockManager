@@ -11,16 +11,63 @@ import datetime
 # bunun icin bir yol bul!
 
 
-class Stock_Editor:
+class Stock_Editor(QDialog):
     def __init__(self):
         super().__init__()
         self.w = None
+        # loading UI
         loadUi("stok.ui", self)
-        rowPosition = self.table.rowCount()
+        # setting width of columns
+        self.tableWidget.setColumnWidth(0, 250)
+        self.tableWidget.setColumnWidth(1, 45)
+        self.tableWidget.setColumnWidth(2, 45)
+        self.tableWidget.setColumnWidth(3, 80)
+
+        # reading csv file of stocks
+        try:
+            stocks = pd.read_csv("stok.csv", sep=";")
+        except:
+            pass
+
+        self.rowPosition = self.tableWidget.rowCount()
         self.add_product.clicked.connect(self.add_row)
+        self.onayla_button.clicked.connect(self.stok_onayla)
+
+    def stok_onayla(self):
+        stocks = pd.DataFrame(columns=["Ürün", "Fiyat", "Miktar", "Birim"])
+        stocks["Ürün"] = [
+            self.tableWidget.item(row, 0).text()
+            for row in range(self.tableWidget.rowCount())
+        ]
+        stocks["Fiyat"] = [
+            self.tableWidget.item(row, 1).text()
+            for row in range(self.tableWidget.rowCount())
+        ]
+        stocks["Miktar"] = [
+            self.tableWidget.item(row, 2).text()
+            for row in range(self.tableWidget.rowCount())
+        ]
+        stocks["Birim"] = [
+            self.tableWidget.cellWidget(row, 3).currentText()
+            for row in range(self.tableWidget.rowCount())
+        ]
+        stocks.to_csv("stocks.csv", sep=";", index=False)
 
     def add_row(self):
         self.tableWidget.insertRow(self.rowPosition)
+        self.combo = self.comboCompanies(self)
+        self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
+
+    class comboCompanies(QComboBox):
+        def __init__(self, parent):
+            super().__init__(parent)
+            # self.setStyleSheet("font-size: 8px")
+            self.addItems(["adet", "gram", "kilogram", "litre"])
+            self.currentIndexChanged.connect(self.getComboValue)
+
+        def getComboValue(self):
+            print(self.currentText())
+            # return self.currentText()
 
 
 class OrderPage(QDialog):
@@ -50,7 +97,7 @@ class OrderPage(QDialog):
 
         self.ok_button.clicked.connect(self.ok_)
         self.delete_button.clicked.connect(self.delete_button_clicked)
-        self.cancel_button.clicked.connect(self.closeEvent)
+        self.cancel_button.clicked.connect(self.CloseEvent)
 
     def ok_(self):
         MainPage.df["cost"].mask(
@@ -78,7 +125,7 @@ class OrderPage(QDialog):
         MainPage.df.to_csv("june.csv", sep=";", index=False)
         self.close()
 
-    def closeEvent(self):
+    def CloseEvent(self):
         self.close()
 
     def order_click(self):
@@ -158,7 +205,7 @@ class MainPage(QDialog):
         loadUi("MainPage.ui", self)
         self.setWindowTitle("StockManager")
         self.siparisgir.clicked.connect(self.new_order)
-        self.siparisgoruntule.clicked(print("hey"))
+        self.stokgir.clicked.connect(self.openStockPage)
 
     def new_order(self):
         # reading saves of customer orders
@@ -186,9 +233,13 @@ class MainPage(QDialog):
                 }
             )
             self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
-        self.openWin()
+        self.openOrderPage()
 
-    def openWin(self):
+    def openStockPage(self):
+        self.win = Stock_Editor()
+        self.win.show()
+
+    def openOrderPage(self):
         self.win = OrderPage()
         self.win.show()
 
