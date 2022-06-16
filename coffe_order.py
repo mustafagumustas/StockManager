@@ -2,7 +2,7 @@ import sys
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QColor
 import pandas as pd
 import datetime
 
@@ -32,6 +32,34 @@ class Stock_Editor(QDialog):
         self.rowPosition = self.tableWidget.rowCount()
         self.add_product.clicked.connect(self.add_row)
         self.onayla_button.clicked.connect(self.stok_onayla)
+        self.category_name.setDisabled(True)
+        self.add_category_b.clicked.connect(self.category)
+        self.category_name_ok.clicked.connect(self.add_category)
+
+        self.tabWidget.removeTab(1)
+        self.tab_count = self.tabWidget.count()
+
+    def add_category(self):
+        tab_index = self.tabWidget.currentIndex()
+        text = self.category_name.text()
+
+        if self.tab_count == 1 and text != "Kategori adi" and text != "":
+            self.tabWidget.setTabText(tab_index, str(text))
+            self.tab_count += 1
+        elif self.tab_count > 1 and text != "Kategori adi" and text != "":
+            tab = QWidget()
+            self.tabWidget.addTab(tab, str(text))
+        self.category_name.setDisabled(True)
+        self.category_name.setText("Kategori adi")
+        self.tabWidget.tabBar().setTabTextColor(tab_index, QColor("black"))
+        self.category_name.setStyleSheet("border: 1px solid black;")
+
+    def category(self):
+        self.category_name.setEnabled(True)
+        self.category_name.selectAll()
+        self.category_name.del_()
+        self.category_name.setFocus(True)
+        self.category_name.setStyleSheet("border: 1px solid red;")
 
     def stok_onayla(self):
         stocks = pd.DataFrame(columns=["Ürün", "Fiyat", "Miktar", "Birim"])
@@ -63,11 +91,6 @@ class Stock_Editor(QDialog):
             super().__init__(parent)
             # self.setStyleSheet("font-size: 8px")
             self.addItems(["adet", "gram", "kilogram", "litre"])
-            self.currentIndexChanged.connect(self.getComboValue)
-
-        def getComboValue(self):
-            print(self.currentText())
-            # return self.currentText()
 
 
 class OrderPage(QDialog):
