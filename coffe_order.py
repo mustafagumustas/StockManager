@@ -266,7 +266,6 @@ class OrderPage(QDialog):
     def cancel_order(self):
         global df
         df = df[:-1]
-        print(df)
         self.tableWidget.setRowCount(0)
         MainPage.new_order(self)
         self.close()
