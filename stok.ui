@@ -59,6 +59,9 @@
     <property name="currentIndex">
      <number>0</number>
     </property>
+    <property name="tabsClosable">
+     <bool>false</bool>
+    </property>
     <widget class="QWidget" name="tab">
      <attribute name="title">
       <string>Tab 1</string>
@@ -103,12 +106,12 @@
      </attribute>
     </widget>
    </widget>
-   <widget class="QPushButton" name="add_category">
+   <widget class="QPushButton" name="add_category_b">
     <property name="geometry">
      <rect>
-      <x>80</x>
-      <y>530</y>
-      <width>180</width>
+      <x>81</x>
+      <y>541</y>
+      <width>131</width>
       <height>50</height>
      </rect>
     </property>
@@ -135,10 +138,41 @@
      <string>Onayla</string>
     </property>
    </widget>
+   <widget class="QLineEdit" name="category_name">
+    <property name="geometry">
+     <rect>
+      <x>80</x>
+      <y>520</y>
+      <width>180</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Kategori adi</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="category_name_ok">
+    <property name="geometry">
+     <rect>
+      <x>217</x>
+      <y>541</y>
+      <width>41</width>
+      <height>50</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color:rgb(255,255,255)</string>
+    </property>
+    <property name="text">
+     <string>OK</string>
+    </property>
+   </widget>
    <zorder>tabWidget</zorder>
    <zorder>add_product</zorder>
-   <zorder>add_category</zorder>
+   <zorder>add_category_b</zorder>
    <zorder>onayla_button</zorder>
+   <zorder>category_name</zorder>
+   <zorder>category_name_ok</zorder>
   </widget>
  </widget>
  <resources/>
