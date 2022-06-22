@@ -38,23 +38,21 @@ class MainPage(QDialog):
     def __init__(self):
         super().__init__()
         loadUi("MainPage.ui", self)
-        global df
+        global df, new_customer_id, total
+        new_customer_id = ""
+        total = 0
         df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
         self.setWindowTitle("StockManager")
         self.siparisgir.clicked.connect(self.new_order)
         self.stokgir.clicked.connect(self.openStockPage)
 
     def new_order(self):
-        global df
-        global date
-        global new_customer_id
+        global df, date, new_customer_id, total
         # reading saves of customer orders
         # converting customer order_id into string, we want 0001 not 1
         # todays date
         date = datetime.datetime.today().strftime("%d-%m-%Y")
-        self.total = 0
         # creating customer id in 0000 format then changing label to it
-        new_customer_id = ""
         if (date in df["date"].values) is False:
             new_df = pd.DataFrame(
                 {"date": [str(date)], "#": ["0001"], "orders": "", "cost": [0],}
@@ -72,7 +70,7 @@ class MainPage(QDialog):
                 }
             )
             df = pd.concat([df, new_df], ignore_index=True, axis=0)
-        self.openOrderPage()
+        MainPage.openOrderPage(self)
 
     def openStockPage(self):
         self.win = Stock_Editor()
@@ -244,9 +242,10 @@ class OrderPage(QDialog):
 
         self.ok_button.clicked.connect(self.ok_)
         self.delete_button.clicked.connect(self.delete_button_clicked)
-        self.cancel_button.clicked.connect(self.CloseEvent)
+        self.cancel_button.clicked.connect(self.cancel_order)
 
     def ok_(self):
+        global new_order
         df["cost"].mask(
             ((df["#"] == 2) & (df["date"] == date)), MainPage.total, inplace=True,
         )
@@ -260,9 +259,16 @@ class OrderPage(QDialog):
             MainPage.total
         )
         df.to_csv("june.csv", sep=";", index=False)
+        self.tableWidget.setRowCount(0)
+        MainPage.new_order(self)
         self.close()
 
-    def CloseEvent(self):
+    def cancel_order(self):
+        global df
+        df = df[:-1]
+        print(df)
+        self.tableWidget.setRowCount(0)
+        MainPage.new_order(self)
         self.close()
 
     def order_click(self):
