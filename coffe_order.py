@@ -6,45 +6,144 @@ from PyQt5.QtGui import QIcon, QColor
 import pandas as pd
 import datetime
 
-# nan degerleri oldugu icin hata veriyor
-# csv ye hemen date ve # eklenmemeli
-# bunun icin bir yol bul!
+
+class LoginPage(QDialog):
+    def __init__(self):
+        super().__init__()
+        loadUi("login.ui", self)
+        self.admin_username = "must"
+        self.admin_password = "1234"
+        self.login_button.clicked.connect(self.log_user)
+
+    def log_user(self):
+        if (
+            self.username.text() == self.admin_username
+            and self.password.text() == self.admin_password
+        ):
+            self.win = MainPage()
+            self.win.show()
+            self.close()
+        else:
+            print(self.username.text())
+            print(self.password.text())
+            msg = QMessageBox()
+            msg.setWindowTitle("Error")
+            msg.setText("Kullanici adi veya sifre hatali, tekrar deneyin!")
+            msg.setIcon(QMessageBox.Question)
+            msg.setIcon(QMessageBox.Critical)
+            msg.exec_()
+
+
+class MainPage(QDialog):
+    def __init__(self):
+        super().__init__()
+        loadUi("MainPage.ui", self)
+        global df
+        df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+        self.setWindowTitle("StockManager")
+        self.siparisgir.clicked.connect(self.new_order)
+        self.stokgir.clicked.connect(self.openStockPage)
+
+    def new_order(self):
+        global df
+        global date
+        global new_customer_id
+        # reading saves of customer orders
+        # converting customer order_id into string, we want 0001 not 1
+        # todays date
+        date = datetime.datetime.today().strftime("%d-%m-%Y")
+        self.total = 0
+        # creating customer id in 0000 format then changing label to it
+        new_customer_id = ""
+        if (date in df["date"].values) is False:
+            new_df = pd.DataFrame(
+                {"date": [str(date)], "#": ["0001"], "orders": "", "cost": [0],}
+            )
+            df = pd.concat([df, new_df], ignore_index=True, axis=0)
+            new_customer_id = str("0001").zfill(4)
+        else:
+            new_customer_id = str(int(df["#"].iloc[[-1]]) + 1).zfill(4)
+            new_df = pd.DataFrame(
+                {
+                    "date": [str(date)],
+                    "#": [str(new_customer_id)],
+                    "orders": "",
+                    "cost": [0],
+                }
+            )
+            df = pd.concat([df, new_df], ignore_index=True, axis=0)
+        self.openOrderPage()
+
+    def openStockPage(self):
+        self.win = Stock_Editor()
+        self.win.show()
+        self.close()
+
+    def openOrderPage(self):
+        self.win = OrderPage()
+        self.win.show()
+        self.close()
+
+    def save_csv(self):
+        # saving orders into csv with given orders and total cost info
+        df.to_csv("june.csv", sep=";", index=False)
 
 
 class Stock_Editor(QDialog):
     def __init__(self):
         super().__init__()
         self.w = None
+
         # loading UI
         loadUi("stok.ui", self)
+
         # setting width of columns
-        self.tableWidget.setColumnWidth(0, 250)
-        self.tableWidget.setColumnWidth(1, 45)
-        self.tableWidget.setColumnWidth(2, 45)
-        self.tableWidget.setColumnWidth(3, 80)
+        self.tableWidget.setColumnWidth(0, 450)
+        self.tableWidget.setColumnWidth(1, 75)
+        self.tableWidget.setColumnWidth(2, 40)
+        self.tableWidget.setColumnWidth(3, 70)
 
-        # reading csv file of stocks
+        # reading csv file of stocks, if not found create and save empty one
         try:
-            stocks = pd.read_csv("stok.csv", sep=";")
+            self.stocks = pd.read_csv("stok.csv", sep=";")
         except:
-            pass
+            self.stocks = pd.DataFrame(
+                columns=["Kategori", "Ürün", "Fiyat", "Miktar", "Birim"]
+            )
 
+        # number of items in tablewidget
         self.rowPosition = self.tableWidget.rowCount()
+
+        # push button connections
+        # item to tablewidget
         self.add_product.clicked.connect(self.add_row)
         self.onayla_button.clicked.connect(self.stok_onayla)
+
+        # category name
         self.category_name.setDisabled(True)
         self.add_category_b.clicked.connect(self.category)
         self.category_name_ok.clicked.connect(self.add_category)
 
+        # there are 2 default tabs, removing one and making user edit first one
         self.tabWidget.removeTab(1)
+
+        # nubmer of categories = tabs
         self.tab_count = self.tabWidget.count()
+        if self.tab_count < 2:
+            self.add_product.setEnabled(False)
+            self.onayla_button.setEnabled(False)
+
+        # disable add item button when nothing typed
 
     def add_category(self):
         tab_index = self.tabWidget.currentIndex()
+
+        # user input of category name
         text = self.category_name.text()
 
         if self.tab_count == 1 and text != "Kategori adi" and text != "":
             self.tabWidget.setTabText(tab_index, str(text))
+            # self.stocks[""]
             self.tab_count += 1
         elif self.tab_count > 1 and text != "Kategori adi" and text != "":
             tab = QWidget()
@@ -53,6 +152,13 @@ class Stock_Editor(QDialog):
         self.category_name.setText("Kategori adi")
         self.tabWidget.tabBar().setTabTextColor(tab_index, QColor("black"))
         self.category_name.setStyleSheet("border: 1px solid black;")
+        self.add_product.setEnabled(True)
+        self.onayla_button.setEnabled(True)
+        if self.tableWidget.currentRow() == -1:
+            self.tableWidget.insertRow(self.rowPosition)
+            self.combo = self.comboCompanies(self)
+            self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
+            # self.rowPosition += 1
 
     def category(self):
         self.category_name.setEnabled(True)
@@ -62,35 +168,53 @@ class Stock_Editor(QDialog):
         self.category_name.setStyleSheet("border: 1px solid red;")
 
     def stok_onayla(self):
-        stocks = pd.DataFrame(columns=["Ürün", "Fiyat", "Miktar", "Birim"])
-        stocks["Ürün"] = [
+        self.stocks["Kategori"] = [
+            self.tabWidget.tabText(self.tabWidget.currentIndex())
+            for row in range(self.tableWidget.rowCount())
+        ]
+        self.stocks["Ürün"] = [
             self.tableWidget.item(row, 0).text()
             for row in range(self.tableWidget.rowCount())
         ]
-        stocks["Fiyat"] = [
+        self.stocks["Fiyat"] = [
             self.tableWidget.item(row, 1).text()
             for row in range(self.tableWidget.rowCount())
         ]
-        stocks["Miktar"] = [
+        self.stocks["Miktar"] = [
             self.tableWidget.item(row, 2).text()
             for row in range(self.tableWidget.rowCount())
         ]
-        stocks["Birim"] = [
+        self.stocks["Birim"] = [
             self.tableWidget.cellWidget(row, 3).currentText()
             for row in range(self.tableWidget.rowCount())
         ]
-        stocks.to_csv("stocks.csv", sep=";", index=False)
+        self.stocks.to_csv("stocks.csv", sep=";", index=False)
+        self.add_product.setEnabled(True)
 
     def add_row(self):
-        self.tableWidget.insertRow(self.rowPosition)
-        self.combo = self.comboCompanies(self)
-        self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
+        if self.tableWidget.item(self.rowPosition - 1, 0):
+            if self.tableWidget.item(self.rowPosition - 1, 0).text():
+                self.add_product.setEnabled(True)
+                self.tableWidget.insertRow(self.rowPosition)
+                self.combo = self.comboCompanies(self)
+                self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
+            else:
+                print("empty")
+        else:
+            self.add_product.setEnabled(False)
+            msg = QMessageBox()
+            msg.setWindowTitle("Urun tablosu hatasi!")
+            msg.setText("Bos urun eklenemez, urun adi girerek tekrar deneyin!")
+            msg.setIcon(QMessageBox.Question)
+            msg.setIcon(QMessageBox.Critical)
+            msg.exec_()
+        self.rowPosition += 1
 
     class comboCompanies(QComboBox):
         def __init__(self, parent):
             super().__init__(parent)
             # self.setStyleSheet("font-size: 8px")
-            self.addItems(["adet", "gram", "kilogram", "litre"])
+            self.addItems(["", "adet", "gram", "kilogram", "litre"])
 
 
 class OrderPage(QDialog):
@@ -100,7 +224,7 @@ class OrderPage(QDialog):
         super().__init__()
         self.w = None
         loadUi("order.ui", self)
-        self.order_id.setText(MainPage.df["#"].iloc[[-1]].values[0])
+        self.order_id.setText(df["#"].iloc[[-1]].values[0])
         self.tableWidget.setColumnWidth(0, 250)
         self.tableWidget.setColumnWidth(1, 45)
 
@@ -123,29 +247,19 @@ class OrderPage(QDialog):
         self.cancel_button.clicked.connect(self.CloseEvent)
 
     def ok_(self):
-        MainPage.df["cost"].mask(
-            ((MainPage.df["#"] == 2) & (MainPage.df["date"] == MainPage.date)),
-            MainPage.total,
-            inplace=True,
+        df["cost"].mask(
+            ((df["#"] == 2) & (df["date"] == date)), MainPage.total, inplace=True,
         )
 
-        last_order = str(MainPage.df["orders"].iloc[[-1]].values[0]).split(",")
+        last_order = str(df["orders"].iloc[[-1]].values[0]).split(",")
         last_order = [i for i in last_order if i != ""]
-        MainPage.df.loc[
-            (
-                (MainPage.df["date"] == MainPage.date)
-                & (MainPage.df["#"] == MainPage.new_customer_id)
-            ),
-            "orders",
+        df.loc[
+            ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
         ] = ",".join(last_order)
-        MainPage.df.loc[
-            (
-                (MainPage.df["date"] == MainPage.date)
-                & (MainPage.df["#"] == MainPage.new_customer_id)
-            ),
-            "cost",
-        ] = str(MainPage.total)
-        MainPage.df.to_csv("june.csv", sep=";", index=False)
+        df.loc[((df["date"] == date) & (df["#"] == new_customer_id)), "cost",] = str(
+            MainPage.total
+        )
+        df.to_csv("june.csv", sep=";", index=False)
         self.close()
 
     def CloseEvent(self):
@@ -155,32 +269,20 @@ class OrderPage(QDialog):
         # get the name of button triggered this function
         ordered = self.sender()
         last_order = list(
-            MainPage.df["orders"]
-            .loc[
-                (
-                    (MainPage.df["date"] == MainPage.date)
-                    & (MainPage.df["#"] == MainPage.new_customer_id)
-                )
-            ]
+            df["orders"]
+            .loc[((df["date"] == date) & (df["#"] == new_customer_id))]
             .values
         )
         last_order.append(f"{ordered.text()}")
-        MainPage.df.loc[
-            (
-                (MainPage.df["date"] == MainPage.date)
-                & (MainPage.df["#"] == MainPage.new_customer_id)
-            ),
-            "orders",
+        df.loc[
+            ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
         ] = ",".join(last_order)
         self.load_order()
 
     def load_order(self):
         # getting orders from df
         current_order = (
-            MainPage.df["orders"][
-                (MainPage.df["#"] == self.order_id.text())
-                & (MainPage.df["date"] == MainPage.date)
-            ]
+            df["orders"][(df["#"] == self.order_id.text()) & (df["date"] == date)]
             .to_list()[0]
             .split(",")
         )
@@ -208,72 +310,18 @@ class OrderPage(QDialog):
             row = self.tableWidget.rowCount() - 1
         if row >= 0:
             self.tableWidget.removeRow(row)
-        orders = list(MainPage.df["orders"].iloc[[-1]])[0].split(",")
+        orders = list(df["orders"].iloc[[-1]])[0].split(",")
         orders = [i for i in orders if i != ""]
         del orders[row]
-        MainPage.df.loc[
-            (
-                (MainPage.df["date"] == MainPage.date)
-                & (MainPage.df["#"] == MainPage.new_customer_id)
-            ),
-            "orders",
+        df.loc[
+            ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
         ] = ",".join(orders)
         self.load_order()
-
-
-class MainPage(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
-        loadUi("MainPage.ui", self)
-        self.setWindowTitle("StockManager")
-        self.siparisgir.clicked.connect(self.new_order)
-        self.stokgir.clicked.connect(self.openStockPage)
-
-    def new_order(self):
-        # reading saves of customer orders
-        # converting customer order_id into string, we want 0001 not 1
-        self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
-        # todays date
-        self.date = datetime.datetime.today().strftime("%d-%m-%Y")
-        self.total = 0
-        # creating customer id in 0000 format then changing label to it
-        self.new_customer_id = ""
-        if (self.date in self.df["date"].values) is False:
-            new_df = pd.DataFrame(
-                {"date": [str(self.date)], "#": ["0001"], "orders": "", "cost": [0],}
-            )
-            self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
-            self.new_customer_id = str("0001").zfill(4)
-        else:
-            self.new_customer_id = str(int(self.df["#"].iloc[[-1]]) + 1).zfill(4)
-            new_df = pd.DataFrame(
-                {
-                    "date": [str(self.date)],
-                    "#": [str(self.new_customer_id)],
-                    "orders": "",
-                    "cost": [0],
-                }
-            )
-            self.df = pd.concat([self.df, new_df], ignore_index=True, axis=0)
-        self.openOrderPage()
-
-    def openStockPage(self):
-        self.win = Stock_Editor()
-        self.win.show()
-
-    def openOrderPage(self):
-        self.win = OrderPage()
-        self.win.show()
-
-    def save_csv(self):
-        # saving orders into csv with given orders and total cost info
-        self.df.to_csv("june.csv", sep=";", index=False)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
-    MainPage = MainPage()
-    MainPage.show()
+    LoginPage = LoginPage()
+    LoginPage.show()
     sys.exit(app.exec_())
