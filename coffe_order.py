@@ -26,12 +26,7 @@ class LoginPage(QDialog):
         else:
             print(self.username.text())
             print(self.password.text())
-            msg = QMessageBox()
-            msg.setWindowTitle("Error")
-            msg.setText("Kullanici adi veya sifre hatali, tekrar deneyin!")
-            msg.setIcon(QMessageBox.Question)
-            msg.setIcon(QMessageBox.Critical)
-            msg.exec_()
+            pop_up_gen("Kullanici adi veya sifre hatali, tekrar deneyin!")
 
 
 class MainPage(QDialog):
@@ -200,12 +195,10 @@ class Stock_Editor(QDialog):
                 print("empty")
         else:
             self.add_product.setEnabled(False)
-            msg = QMessageBox()
-            msg.setWindowTitle("Urun tablosu hatasi!")
-            msg.setText("Bos urun eklenemez, urun adi girerek tekrar deneyin!")
-            msg.setIcon(QMessageBox.Question)
-            msg.setIcon(QMessageBox.Critical)
-            msg.exec_()
+            pop_up_gen(
+                "Bos urun eklenemez, urun adi girerek tekrar deneyin!",
+                title="Urun tablosu hatasi!",
+            )
         self.rowPosition += 1
 
     class comboCompanies(QComboBox):
@@ -225,6 +218,8 @@ class OrderPage(QDialog):
         self.order_id.setText(df["#"].iloc[[-1]].values[0])
         self.tableWidget.setColumnWidth(0, 250)
         self.tableWidget.setColumnWidth(1, 45)
+
+        self.delete_b_counter = 0
 
         self.cost_df = pd.read_csv(
             "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
@@ -309,24 +304,39 @@ class OrderPage(QDialog):
             self.row += 1
 
     def delete_button_clicked(self):
-        if self.tableWidget.selectedIndexes():
+        # in order to delete rows, user must select one
+        self.delete_b_counter += 1
+        if self.tableWidget.selectedIndexes() and self.tableWidget.rowCount() > 0:
             row = self.tableWidget.currentIndex().row()
+            orders = list(df["orders"].iloc[[-1]])[0].split(",")
+            orders = [i for i in orders if i != ""]
+            del orders[row]
+            df.loc[
+                ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
+            ] = ",".join(orders)
+            self.delete_b_counter = 0
         else:
             row = self.tableWidget.rowCount() - 1
-        if row >= 0:
-            self.tableWidget.removeRow(row)
-        orders = list(df["orders"].iloc[[-1]])[0].split(",")
-        orders = [i for i in orders if i != ""]
-        del orders[row]
-        df.loc[
-            ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
-        ] = ",".join(orders)
+
+        if self.delete_b_counter > 1:
+            pop_up_gen("Urun silmek icin lutfen secim yapiniz")
+            self.delete_b_counter = 1
+
         self.load_order()
+
+
+def pop_up_gen(message, title="Uyari"):
+    msg = QMessageBox()
+    msg.setWindowTitle(title)
+    msg.setText(message)
+    msg.setIcon(QMessageBox.Question)
+    msg.setIcon(QMessageBox.Critical)
+    msg.exec_()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
-    LoginPage = LoginPage()
+    LoginPage = MainPage()
     LoginPage.show()
     sys.exit(app.exec_())
