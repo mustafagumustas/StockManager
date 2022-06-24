@@ -21,7 +21,7 @@ class LoginPage(QDialog):
             and self.password.text() == self.admin_password
         ):
             self.win = MainPage()
-            self.win.show()
+            self.win.showMaximized()
             self.close()
         else:
             print(self.username.text())
@@ -69,12 +69,12 @@ class MainPage(QDialog):
 
     def openStockPage(self):
         self.win = Stock_Editor()
-        self.win.show()
+        self.win.showMaximized()
         self.close()
 
     def openOrderPage(self):
         self.win = OrderPage()
-        self.win.show()
+        self.win.showMaximized()
         self.close()
 
     def save_csv(self):
@@ -209,8 +209,6 @@ class Stock_Editor(QDialog):
 
 
 class OrderPage(QDialog):
-    window_closed = pyqtSignal()
-
     def __init__(self):
         super().__init__()
         self.w = None
@@ -338,5 +336,5 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
     LoginPage = MainPage()
-    LoginPage.show()
+    LoginPage.showMaximized()
     sys.exit(app.exec_())
