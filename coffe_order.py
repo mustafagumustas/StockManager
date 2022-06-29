@@ -6,7 +6,7 @@ from PyQt5.QtGui import QIcon, QColor
 import pandas as pd
 import datetime
 
-
+# deneme
 class LoginPage(QDialog):
     def __init__(self):
         super().__init__()
@@ -85,7 +85,7 @@ class MainPage(QDialog):
 class Stock_Editor(QDialog):
     def __init__(self):
         super().__init__()
-        self.w = None
+        # self.w = None
 
         # loading UI
         loadUi("stok.ui", self)
@@ -97,12 +97,12 @@ class Stock_Editor(QDialog):
         self.tableWidget.setColumnWidth(3, 70)
 
         # reading csv file of stocks, if not found create and save empty one
+        global col_names
+        col_names = ["Kategori", "Ürün", "Fiyat", "Miktar", "Birim"]
         try:
             self.stocks = pd.read_csv("stok.csv", sep=";")
         except:
-            self.stocks = pd.DataFrame(
-                columns=["Kategori", "Ürün", "Fiyat", "Miktar", "Birim"]
-            )
+            self.stocks = pd.DataFrame(columns=col_names)
 
         # number of items in tablewidget
         self.rowPosition = self.tableWidget.rowCount()
@@ -136,7 +136,6 @@ class Stock_Editor(QDialog):
 
         if self.tab_count == 1 and text != "Kategori adi" and text != "":
             self.tabWidget.setTabText(tab_index, str(text))
-            # self.stocks[""]
             self.tab_count += 1
         elif self.tab_count > 1 and text != "Kategori adi" and text != "":
             tab = QWidget()
@@ -151,7 +150,6 @@ class Stock_Editor(QDialog):
             self.tableWidget.insertRow(self.rowPosition)
             self.combo = self.comboCompanies(self)
             self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
-            # self.rowPosition += 1
 
     def category(self):
         self.category_name.setEnabled(True)
@@ -161,45 +159,52 @@ class Stock_Editor(QDialog):
         self.category_name.setStyleSheet("border: 1px solid red;")
 
     def stok_onayla(self):
-        self.stocks["Kategori"] = [
-            self.tabWidget.tabText(self.tabWidget.currentIndex())
-            for row in range(self.tableWidget.rowCount())
-        ]
-        self.stocks["Ürün"] = [
-            self.tableWidget.item(row, 0).text()
-            for row in range(self.tableWidget.rowCount())
-        ]
-        self.stocks["Fiyat"] = [
-            self.tableWidget.item(row, 1).text()
-            for row in range(self.tableWidget.rowCount())
-        ]
-        self.stocks["Miktar"] = [
-            self.tableWidget.item(row, 2).text()
-            for row in range(self.tableWidget.rowCount())
-        ]
-        self.stocks["Birim"] = [
-            self.tableWidget.cellWidget(row, 3).currentText()
-            for row in range(self.tableWidget.rowCount())
-        ]
-        self.stocks.to_csv("stocks.csv", sep=";", index=False)
-        self.add_product.setEnabled(True)
-
-    def add_row(self):
-        if self.tableWidget.item(self.rowPosition - 1, 0):
-            if self.tableWidget.item(self.rowPosition - 1, 0).text():
-                self.add_product.setEnabled(True)
-                self.tableWidget.insertRow(self.rowPosition)
-                self.combo = self.comboCompanies(self)
-                self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
-            else:
-                print("empty")
-        else:
-            self.add_product.setEnabled(False)
+        empty = [col_name for i, col_name in enumerate(col_names[1:]) if type(self.tableWidget.item(self.rowPosition, i)) == type(None)]
+        if len(empty)>1:
             pop_up_gen(
-                "Bos urun eklenemez, urun adi girerek tekrar deneyin!",
+                f"Bos urun eklenemez, bos satiri olan tabloyu onaylamaya calisiyorsunuz.",
                 title="Urun tablosu hatasi!",
             )
-        self.rowPosition += 1
+        else:
+            self.stocks["Kategori"] = [
+                self.tabWidget.tabText(self.tabWidget.currentIndex())
+                for row in range(self.tableWidget.rowCount())
+            ]
+            self.stocks["Ürün"] = [
+                self.tableWidget.item(row, 0).text()
+                for row in range(self.tableWidget.rowCount())
+            ]
+            self.stocks["Fiyat"] = [
+                self.tableWidget.item(row, 1).text()
+                for row in range(self.tableWidget.rowCount())
+            ]
+            self.stocks["Miktar"] = [
+                self.tableWidget.item(row, 2).text()
+                for row in range(self.tableWidget.rowCount())
+            ]
+            self.stocks["Birim"] = [
+                self.tableWidget.cellWidget(row, 3).currentText()
+                for row in range(self.tableWidget.rowCount())
+            ]
+            self.stocks.to_csv("stocks.csv", sep=";", index=False)
+            self.add_product.setEnabled(True)
+
+    def add_row(self):
+        # user should't add new row without filling first rows cells
+        global row_names
+        empty = [col_name for i, col_name in enumerate(col_names[1:]) if type(self.tableWidget.item(self.rowPosition, i)) == type(None)]
+        if len(empty) >2:
+            pop_up_gen(
+                f"Bos urun eklenemez, {self.rowPosition+1} satirindaki degerleri eksiksiz giriniz",
+                title="Urun tablosu hatasi!",
+            )
+        else:
+            self.add_product.setEnabled(True)
+            self.rowPosition += 1
+            self.tableWidget.insertRow(self.rowPosition)
+            self.combo = self.comboCompanies(self)
+            self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
+        
 
     class comboCompanies(QComboBox):
         def __init__(self, parent):
@@ -335,6 +340,6 @@ def pop_up_gen(message, title="Uyari"):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
-    LoginPage = MainPage()
+    LoginPage = Stock_Editor()
     LoginPage.showMaximized()
     sys.exit(app.exec_())
