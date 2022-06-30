@@ -6,7 +6,6 @@ from PyQt5.QtGui import QIcon, QColor
 import pandas as pd
 import datetime
 
-# deneme
 class LoginPage(QDialog):
     def __init__(self):
         super().__init__()
@@ -209,7 +208,6 @@ class Stock_Editor(QDialog):
     class comboCompanies(QComboBox):
         def __init__(self, parent):
             super().__init__(parent)
-            # self.setStyleSheet("font-size: 8px")
             self.addItems(["", "adet", "gram", "kilogram", "litre"])
 
 
