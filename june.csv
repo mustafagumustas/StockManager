@@ -17,4 +17,14 @@ date;#;orders;cost
 12-06-2022;0001;Filter Coffee,Espresso,Americano,Americano,Espresso,Filter Coffee;36.0
 12-06-2022;0002;Espresso,Espresso,Espresso;12.0
 12-06-2022;0003;Filter Coffee,Espresso;12.0
-12-06-2022;0004;Espresso,Espresso;8
+12-06-2022;0004;Espresso,Espresso;8.0
+13-06-2022;0001;Espresso,Espresso,Filter Coffee,Latte;26.0
+21-06-2022;0001;Filter Coffee,Espresso,Latte,Filter Coffee,Filter Coffee,Filter Coffee,Filter Coffee,Latte,Latte;74.0
+21-06-2022;0002;Filter Coffee,Filter Coffee,Filter Coffee;24.0
+21-06-2022;0003;Espresso,Espresso,Espresso;12.0
+21-06-2022;0004;Americano,Espresso,Filter Coffee;18.0
+21-06-2022;0005;Filter Coffee;8.0
+22-06-2022;0001;Filter Coffee,Filter Coffee;16.0
+01-07-2022;0001;Filter Coffee,Espresso,Espresso,Espresso,Espresso,Espresso,Espresso;32.0
+01-07-2022;0002;Espresso,Espresso,Espresso,Espresso,Espresso;20.0
+01-07-2022;0003;Espresso,Filter Coffee,Americano,Latte;28

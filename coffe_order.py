@@ -1,10 +1,12 @@
 import sys
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QIcon, QColor
+from PyQt5.QtCore import pyqtSignal, Qt, QSize
+from PyQt5.QtGui import QIcon, QColor, QFont
 import pandas as pd
 import datetime
+from PyQt5.QtCore import pyqtSlot
+
 
 class LoginPage(QDialog):
     def __init__(self):
@@ -49,7 +51,12 @@ class MainPage(QDialog):
         # creating customer id in 0000 format then changing label to it
         if (date in df["date"].values) is False:
             new_df = pd.DataFrame(
-                {"date": [str(date)], "#": ["0001"], "orders": "", "cost": [0],}
+                {
+                    "date": [str(date)],
+                    "#": ["0001"],
+                    "orders": "",
+                    "cost": [0],
+                }
             )
             df = pd.concat([df, new_df], ignore_index=True, axis=0)
             new_customer_id = str("0001").zfill(4)
@@ -64,7 +71,7 @@ class MainPage(QDialog):
                 }
             )
             df = pd.concat([df, new_df], ignore_index=True, axis=0)
-        MainPage.openOrderPage(self)
+        MainPage.openOrderPage()
 
     def openStockPage(self):
         self.win = Stock_Editor()
@@ -158,8 +165,12 @@ class Stock_Editor(QDialog):
         self.category_name.setStyleSheet("border: 1px solid red;")
 
     def stok_onayla(self):
-        empty = [col_name for i, col_name in enumerate(col_names[1:]) if type(self.tableWidget.item(self.rowPosition, i)) == type(None)]
-        if len(empty)>1:
+        empty = [
+            col_name
+            for i, col_name in enumerate(col_names[1:])
+            if type(self.tableWidget.item(self.rowPosition, i)) == type(None)
+        ]
+        if len(empty) > 1:
             pop_up_gen(
                 f"Bos urun eklenemez, bos satiri olan tabloyu onaylamaya calisiyorsunuz.",
                 title="Urun tablosu hatasi!",
@@ -191,8 +202,12 @@ class Stock_Editor(QDialog):
     def add_row(self):
         # user should't add new row without filling first rows cells
         global row_names
-        empty = [col_name for i, col_name in enumerate(col_names[1:]) if type(self.tableWidget.item(self.rowPosition, i)) == type(None)]
-        if len(empty) >2:
+        empty = [
+            col_name
+            for i, col_name in enumerate(col_names[1:])
+            if type(self.tableWidget.item(self.rowPosition, i)) == type(None)
+        ]
+        if len(empty) > 2:
             pop_up_gen(
                 f"Bos urun eklenemez, {self.rowPosition+1} satirindaki degerleri eksiksiz giriniz",
                 title="Urun tablosu hatasi!",
@@ -203,7 +218,6 @@ class Stock_Editor(QDialog):
             self.tableWidget.insertRow(self.rowPosition)
             self.combo = self.comboCompanies(self)
             self.tableWidget.setCellWidget(self.rowPosition, 3, self.combo)
-        
 
     class comboCompanies(QComboBox):
         def __init__(self, parent):
@@ -236,34 +250,76 @@ class OrderPage(QDialog):
         for button in buttons:
             button.clicked.connect(self.order_click)
 
+        self.b_filtercoffee.clicked.connect(self.button_loader)
+
         self.ok_button.clicked.connect(self.ok_)
         self.delete_button.clicked.connect(self.delete_button_clicked)
         self.cancel_button.clicked.connect(self.cancel_order)
 
+        self.new_button_pos_x = 4
+        self.new_button_pos_y = 0
+        self.llllll = ["a", "b", "c"]
+
+    @pyqtSlot()
+    def button_loader(self):
+        # this function creates
+        Hlayout = QHBoxLayout(self)
+        button2 = QPushButton(self.llllll[0], self)
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(button2.sizePolicy().hasHeightForWidth())
+        button2.setSizePolicy(sizePolicy)
+        button2.setMinimumSize(QSize(171, 61))
+        font = QFont()
+        font.setPointSize(16)
+        button2.setFont(font)
+        button2.setStyleSheet(
+            """border-radius:16px;
+            border-color: rgb(199, 98, 50);
+            background-color:rgb(160, 140, 110);
+            color:rgb(0, 0, 0)"""
+        )
+        button2.clicked.connect(lambda: print(button2.text()))
+        spaceItem = QSpacerItem(10, 5, QSizePolicy.Expanding, QSizePolicy.Minimum)
+        # Hlayout.addSpacerItem(spaceItem)
+        Hlayout.addWidget(button2)
+        # Hlayout.addSpacerItem(spaceItem)
+        if self.new_button_pos_y % 2 == 1:
+            self.urunbutonlari_layout.addLayout(Hlayout, self.new_button_pos_x, 1, 1, 1)
+            self.new_button_pos_x += 1
+        else:
+            self.urunbutonlari_layout.addLayout(Hlayout, self.new_button_pos_x, 0, 1, 1)
+        self.new_button_pos_y += 1
+
     def ok_(self):
         global new_order
         df["cost"].mask(
-            ((df["#"] == 2) & (df["date"] == date)), MainPage.total, inplace=True,
+            ((df["#"] == 2) & (df["date"] == date)),
+            MainPage.total,
+            inplace=True,
         )
 
         last_order = str(df["orders"].iloc[[-1]].values[0]).split(",")
         last_order = [i for i in last_order if i != ""]
         df.loc[
-            ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
+            ((df["date"] == date) & (df["#"] == new_customer_id)),
+            "orders",
         ] = ",".join(last_order)
-        df.loc[((df["date"] == date) & (df["#"] == new_customer_id)), "cost",] = str(
-            MainPage.total
-        )
+        df.loc[
+            ((df["date"] == date) & (df["#"] == new_customer_id)),
+            "cost",
+        ] = str(MainPage.total)
         df.to_csv("june.csv", sep=";", index=False)
         self.tableWidget.setRowCount(0)
-        MainPage.new_order(self)
+        MainPage.new_order()
         self.close()
 
     def cancel_order(self):
         global df
         df = df[:-1]
         self.tableWidget.setRowCount(0)
-        MainPage.new_order(self)
+        MainPage.new_order()
         self.close()
 
     def order_click(self):
@@ -276,7 +332,8 @@ class OrderPage(QDialog):
         )
         last_order.append(f"{ordered.text()}")
         df.loc[
-            ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
+            ((df["date"] == date) & (df["#"] == new_customer_id)),
+            "orders",
         ] = ",".join(last_order)
         self.load_order()
 
@@ -313,7 +370,8 @@ class OrderPage(QDialog):
             orders = [i for i in orders if i != ""]
             del orders[row]
             df.loc[
-                ((df["date"] == date) & (df["#"] == new_customer_id)), "orders",
+                ((df["date"] == date) & (df["#"] == new_customer_id)),
+                "orders",
             ] = ",".join(orders)
             self.delete_b_counter = 0
         else:
@@ -324,6 +382,44 @@ class OrderPage(QDialog):
             self.delete_b_counter = 1
 
         self.load_order()
+
+
+class Order_Enter(QDialog):
+    def __init__(self):
+        super().__init__()
+        loadUi("order_enter.ui", self)
+        self.setFixedSize(self.size())
+
+        # removing second default tab
+        self.tabWidget.removeTab(1)
+
+        # setting columns
+        self.columns = ["Ürün", "Fiyat"]
+        self.tableWidget.setHorizontalHeaderLabels(self.columns)
+        self.tableWidget.setColumnCount(2)
+        self.tableWidget.setColumnWidth(0, 250)
+        self.tableWidget.setColumnWidth(1, 79)
+
+        # adding rows
+        self.rowPosition = self.tableWidget.rowCount()
+        # there is a limit for buttons, for now its 4+1 as a test
+        self.tableWidget.setRowCount(4)
+        self.tableWidget.insertRow(self.rowPosition)
+        self.onay_button.clicked.connect(self.print_list)
+
+        # save point
+        self.df_order = pd.DataFrame(columns=self.columns)
+
+    def print_list(self):
+        self.df_order["Ürün"] = [
+            self.tableWidget.item(i, 0).text()
+            for i in range(self.tableWidget.rowCount())
+        ]
+        self.df_order["Fiyat"] = [
+            self.tableWidget.item(i, 1).text()
+            for i in range(self.tableWidget.rowCount())
+        ]
+        print(self.df_order)
 
 
 def pop_up_gen(message, title="Uyari"):
@@ -338,6 +434,6 @@ def pop_up_gen(message, title="Uyari"):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
-    LoginPage = Stock_Editor()
-    LoginPage.showMaximized()
+    MainPage = Order_Enter()
+    MainPage.showMaximized()
     sys.exit(app.exec_())
