@@ -1,7 +1,7 @@
 import sys
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
-from PyQt5.QtCore import pyqtSignal, Qt, QSize
+from PyQt5.QtCore import pyqtSignal, Qt, QSize, QSettings
 from PyQt5.QtGui import QIcon, QColor, QFont
 import pandas as pd
 import datetime
@@ -434,6 +434,6 @@ def pop_up_gen(message, title="Uyari"):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
-    MainPage = Order_Enter()
+    MainPage = MainPage()
     MainPage.showMaximized()
     sys.exit(app.exec_())
