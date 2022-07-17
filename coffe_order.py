@@ -34,14 +34,17 @@ class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("mainn.ui", self)
-        global df, new_customer_id, total
-        new_customer_id = ""
-        self.date = datetime.datetime.today().strftime("%d-%m-%Y")
-        total = 0
-        df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
-        self.setWindowTitle("StockManager")
 
+        # some global variables acrorr the app
+        self.date = datetime.datetime.today().strftime("%d-%m-%Y")
+        self.total = 0
+        self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
+
+        self.setWindowTitle("StockManager")
+        self.new_order()
         self.ui = OrderPage()
+
+        # button functions
         self.order_page_button.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.page_1)
         )
@@ -67,23 +70,17 @@ class MainPage(QMainWindow):
         self.tableWidget.setColumnWidth(1, 45)
 
     def new_order(self):
-        global df, date, new_customer_id, total
-        # reading saves of customer orders
         # converting customer order_id into string, we want 0001 not 1
         # todays date
         # creating customer id in 0000 format then changing label to it
-        if (self.date in df["date"].values) is False:
+        if (self.date in self.df["date"].values) is False:
             new_customer_id = str("0001").zfill(4)
             self.order_id.setText(new_customer_id)
             return new_customer_id
         else:
-            new_customer_id = str(int(df["#"].iloc[[-1]]) + 1).zfill(4)
+            new_customer_id = str(int(self.df["#"].iloc[[-1]]) + 1).zfill(4)
             self.order_id.setText(new_customer_id)
             return new_customer_id
-
-    def save_csv(self):
-        # saving orders into csv with given orders and total cost info
-        df.to_csv("june.csv", sep=";", index=False)
 
 
 class Stock_Editor(QDialog):
@@ -226,7 +223,6 @@ class Stock_Editor(QDialog):
 class OrderPage(QDialog):
     def __init__(self):
         super().__init__()
-        global df
         self.delete_b_counter = 0
         self.cost_df = pd.read_csv(
             "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
@@ -269,7 +265,8 @@ class OrderPage(QDialog):
         self.new_button_pos_y += 1
 
     def ok_(self):
-        global df
+        # the customer finished the ordering and its time to save
+        # information of current order
         data = [
             MainPage.date,
             self.current_customer.id,
@@ -277,16 +274,19 @@ class OrderPage(QDialog):
             self.current_customer.cost,
         ]
 
-        new_df = pd.DataFrame([data], columns=df.columns)
-        df = pd.concat([df, new_df], ignore_index=True, axis=0)
+        new_df = pd.DataFrame([data], columns=MainPage.df.columns)
+        # adding row to main data save
+        MainPage.df = pd.concat([MainPage.df, new_df], ignore_index=True, axis=0)
 
+        # clearing tablewidget for new customers
         self.current_orders = []
         MainPage.tableWidget.setRowCount(0)
         MainPage.new_order()
         MainPage.check.setText(str("0"))
-        df.to_csv("june.csv", sep=";", index=False)
+        MainPage.df.to_csv("june.csv", sep=";", index=False)
 
     def cancel_order(self):
+        # canceling all of the orders no saving clearing tablewidget
         MainPage.tableWidget.setRowCount(0)
         self.current_orders = []
         self.current_customer.orders = []
@@ -302,12 +302,12 @@ class OrderPage(QDialog):
         self.load_order()
 
     def load_order(self):
+        # populating tablewidget
         current_order = self.current_customer.orders
         current_order = [i for i in current_order if i != ""]
         MainPage.tableWidget.setRowCount(len(current_order))
         MainPage.tableWidget.setColumnCount(2)
         MainPage.tableWidget.setHorizontalHeaderLabels(["orders", "cost"])
-        #  populating tablewidget
         self.row = 0
         self.current_customer.cost = 0
         for order in self.current_customer.orders:
