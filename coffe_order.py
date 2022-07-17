@@ -30,58 +30,56 @@ class LoginPage(QDialog):
             pop_up_gen("Kullanici adi veya sifre hatali, tekrar deneyin!")
 
 
-class MainPage(QDialog):
+class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
-        loadUi("MainPage.ui", self)
+        loadUi("mainn.ui", self)
         global df, new_customer_id, total
         new_customer_id = ""
+        self.date = datetime.datetime.today().strftime("%d-%m-%Y")
         total = 0
         df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
         self.setWindowTitle("StockManager")
-        self.siparisgir.clicked.connect(self.new_order)
-        self.stokgir.clicked.connect(self.openStockPage)
+
+        self.ui = OrderPage()
+        self.order_page_button.clicked.connect(
+            lambda: self.stackedWidget.setCurrentWidget(self.page_1)
+        )
+
+        # orderpage button functional connections
+        #
+        # in order to create only one connect line
+        # we need to iterate button names
+        buttons = {
+            self.b_filtercoffee,
+            self.b_espresso,
+            self.b_americano,
+            self.b_latte,
+        }
+        for button in buttons:
+            button.clicked.connect(self.ui.order_click)
+
+        self.ok_button.clicked.connect(self.ui.ok_)
+        self.delete_button.clicked.connect(self.ui.delete_button_clicked)
+        self.cancel_button.clicked.connect(self.ui.cancel_order)
+
+        self.tableWidget.setColumnWidth(0, 250)
+        self.tableWidget.setColumnWidth(1, 45)
 
     def new_order(self):
         global df, date, new_customer_id, total
         # reading saves of customer orders
         # converting customer order_id into string, we want 0001 not 1
         # todays date
-        date = datetime.datetime.today().strftime("%d-%m-%Y")
         # creating customer id in 0000 format then changing label to it
-        if (date in df["date"].values) is False:
-            new_df = pd.DataFrame(
-                {
-                    "date": [str(date)],
-                    "#": ["0001"],
-                    "orders": "",
-                    "cost": [0],
-                }
-            )
-            df = pd.concat([df, new_df], ignore_index=True, axis=0)
+        if (self.date in df["date"].values) is False:
             new_customer_id = str("0001").zfill(4)
+            self.order_id.setText(new_customer_id)
+            return new_customer_id
         else:
             new_customer_id = str(int(df["#"].iloc[[-1]]) + 1).zfill(4)
-            new_df = pd.DataFrame(
-                {
-                    "date": [str(date)],
-                    "#": [str(new_customer_id)],
-                    "orders": "",
-                    "cost": [0],
-                }
-            )
-            df = pd.concat([df, new_df], ignore_index=True, axis=0)
-        MainPage.openOrderPage()
-
-    def openStockPage(self):
-        self.win = Stock_Editor()
-        self.win.showMaximized()
-        self.close()
-
-    def openOrderPage(self):
-        self.win = OrderPage()
-        self.win.showMaximized()
-        self.close()
+            self.order_id.setText(new_customer_id)
+            return new_customer_id
 
     def save_csv(self):
         # saving orders into csv with given orders and total cost info
@@ -228,33 +226,14 @@ class Stock_Editor(QDialog):
 class OrderPage(QDialog):
     def __init__(self):
         super().__init__()
-        self.w = None
-        loadUi("order.ui", self)
-        self.order_id.setText(df["#"].iloc[[-1]].values[0])
-        self.tableWidget.setColumnWidth(0, 250)
-        self.tableWidget.setColumnWidth(1, 45)
-
+        global df
         self.delete_b_counter = 0
-
         self.cost_df = pd.read_csv(
             "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
         )
-        # in order to create only one connect line
-        # we need to iterate button names
-        buttons = {
-            self.b_filtercoffee,
-            self.b_espresso,
-            self.b_americano,
-            self.b_latte,
-        }
-        for button in buttons:
-            button.clicked.connect(self.order_click)
-
-        self.b_filtercoffee.clicked.connect(self.button_loader)
-
-        self.ok_button.clicked.connect(self.ok_)
-        self.delete_button.clicked.connect(self.delete_button_clicked)
-        self.cancel_button.clicked.connect(self.cancel_order)
+        self.current_customer = None
+        self.current_orders = []
+        # self.b_filtercoffee.clicked.connect(self.button_loader)
 
         self.new_button_pos_x = 4
         self.new_button_pos_y = 0
@@ -281,10 +260,7 @@ class OrderPage(QDialog):
             color:rgb(0, 0, 0)"""
         )
         button2.clicked.connect(lambda: print(button2.text()))
-        spaceItem = QSpacerItem(10, 5, QSizePolicy.Expanding, QSizePolicy.Minimum)
-        # Hlayout.addSpacerItem(spaceItem)
         Hlayout.addWidget(button2)
-        # Hlayout.addSpacerItem(spaceItem)
         if self.new_button_pos_y % 2 == 1:
             self.urunbutonlari_layout.addLayout(Hlayout, self.new_button_pos_x, 1, 1, 1)
             self.new_button_pos_x += 1
@@ -293,89 +269,69 @@ class OrderPage(QDialog):
         self.new_button_pos_y += 1
 
     def ok_(self):
-        global new_order
-        df["cost"].mask(
-            ((df["#"] == 2) & (df["date"] == date)),
-            MainPage.total,
-            inplace=True,
-        )
+        global df
+        data = [
+            MainPage.date,
+            self.current_customer.id,
+            ",".join(self.current_customer.orders),
+            self.current_customer.cost,
+        ]
 
-        last_order = str(df["orders"].iloc[[-1]].values[0]).split(",")
-        last_order = [i for i in last_order if i != ""]
-        df.loc[
-            ((df["date"] == date) & (df["#"] == new_customer_id)),
-            "orders",
-        ] = ",".join(last_order)
-        df.loc[
-            ((df["date"] == date) & (df["#"] == new_customer_id)),
-            "cost",
-        ] = str(MainPage.total)
-        df.to_csv("june.csv", sep=";", index=False)
-        self.tableWidget.setRowCount(0)
+        new_df = pd.DataFrame([data], columns=df.columns)
+        df = pd.concat([df, new_df], ignore_index=True, axis=0)
+
+        self.current_orders = []
+        MainPage.tableWidget.setRowCount(0)
         MainPage.new_order()
-        self.close()
+        MainPage.check.setText(str("0"))
+        df.to_csv("june.csv", sep=";", index=False)
 
     def cancel_order(self):
-        global df
-        df = df[:-1]
-        self.tableWidget.setRowCount(0)
-        MainPage.new_order()
-        self.close()
+        MainPage.tableWidget.setRowCount(0)
+        self.current_orders = []
+        self.current_customer.orders = []
+        self.current_customer.cost = 0
+        MainPage.check.setText(str("0"))
+        self.load_order()
 
     def order_click(self):
         # get the name of button triggered this function
-        ordered = self.sender()
-        last_order = list(
-            df["orders"]
-            .loc[((df["date"] == date) & (df["#"] == new_customer_id))]
-            .values
-        )
-        last_order.append(f"{ordered.text()}")
-        df.loc[
-            ((df["date"] == date) & (df["#"] == new_customer_id)),
-            "orders",
-        ] = ",".join(last_order)
+        ordered = self.sender().text()
+        self.current_orders.append(ordered)
+        self.current_customer = customer(MainPage.new_order(), self.current_orders, 0)
         self.load_order()
 
     def load_order(self):
-        # getting orders from df
-        current_order = (
-            df["orders"][(df["#"] == self.order_id.text()) & (df["date"] == date)]
-            .to_list()[0]
-            .split(",")
-        )
+        current_order = self.current_customer.orders
         current_order = [i for i in current_order if i != ""]
-        self.tableWidget.setRowCount(len(current_order))
-        self.tableWidget.setColumnCount(2)
-        self.tableWidget.setHorizontalHeaderLabels(["orders", "cost"])
+        MainPage.tableWidget.setRowCount(len(current_order))
+        MainPage.tableWidget.setColumnCount(2)
+        MainPage.tableWidget.setHorizontalHeaderLabels(["orders", "cost"])
         #  populating tablewidget
         self.row = 0
-        ttll = 0
-        for order in current_order:
-            self.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
+        self.current_customer.cost = 0
+        for order in self.current_customer.orders:
+            MainPage.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
+            # calculating current cost
             new_cost = self.cost_df["cost"][self.cost_df["products"] == order].values[0]
-            ttll += int(new_cost)
-            MainPage.total = ttll
-
-            self.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
-            self.check.setText(str(MainPage.total))
+            self.current_customer.cost += int(new_cost)
+            MainPage.total = self.current_customer.cost
+            MainPage.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
+            MainPage.check.setText(str(MainPage.total))
             self.row += 1
 
     def delete_button_clicked(self):
         # in order to delete rows, user must select one
         self.delete_b_counter += 1
-        if self.tableWidget.selectedIndexes() and self.tableWidget.rowCount() > 0:
-            row = self.tableWidget.currentIndex().row()
-            orders = list(df["orders"].iloc[[-1]])[0].split(",")
-            orders = [i for i in orders if i != ""]
-            del orders[row]
-            df.loc[
-                ((df["date"] == date) & (df["#"] == new_customer_id)),
-                "orders",
-            ] = ",".join(orders)
+        if (
+            MainPage.tableWidget.selectedIndexes()
+            and MainPage.tableWidget.rowCount() > 0
+        ):
+            row = MainPage.tableWidget.currentIndex().row()
+            del self.current_customer.orders[row]
             self.delete_b_counter = 0
         else:
-            row = self.tableWidget.rowCount() - 1
+            row = MainPage.tableWidget.rowCount() - 1
 
         if self.delete_b_counter > 1:
             pop_up_gen("Urun silmek icin lutfen secim yapiniz")
@@ -429,6 +385,16 @@ def pop_up_gen(message, title="Uyari"):
     msg.setIcon(QMessageBox.Question)
     msg.setIcon(QMessageBox.Critical)
     msg.exec_()
+
+
+class customer:
+    # this class is for saving customers info
+    # it contains the id of the customer for that day
+    # products that customer ordered and total cost
+    def __init__(self, id, orders, cost):
+        self.id = id
+        self.orders = orders
+        self.cost = cost
 
 
 if __name__ == "__main__":
