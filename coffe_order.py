@@ -35,6 +35,23 @@ class MainPage(QMainWindow):
         super().__init__()
         loadUi("mainn.ui", self)
 
+        # menubar
+        bar = self.menuBar()
+        # add File section into menubar
+        file = bar.addMenu("File")
+
+        # adding more items to file in menubar
+        actionNew = QAction("New", self)
+        file.addAction(actionNew)
+        actionOpen = QAction("Open", self)
+        file.addAction(actionOpen)
+
+        edit = bar.addMenu("Edit")
+        edit.addAction("Edit")
+
+        actionNew.triggered.connect(lambda: print("hey"))
+        actionOpen.triggered.connect(lambda: print("ey open up"))
+        #
         # some global variables acrorr the app
         self.date = datetime.datetime.today().strftime("%d-%m-%Y")
         self.total = 0
@@ -68,6 +85,9 @@ class MainPage(QMainWindow):
 
         self.tableWidget.setColumnWidth(0, 250)
         self.tableWidget.setColumnWidth(1, 45)
+
+    def preff(self):
+        self.order_id.setText("heyyy")
 
     def new_order(self):
         # converting customer order_id into string, we want 0001 not 1
