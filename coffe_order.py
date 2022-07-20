@@ -30,6 +30,22 @@ class LoginPage(QDialog):
             pop_up_gen("Kullanici adi veya sifre hatali, tekrar deneyin!")
 
 
+class Preferences(QDialog):
+    def __init__(self):
+        super().__init__()
+        loadUi("preferences.ui", self)
+        self.setWindowTitle("Preferences")
+        self.kupon_indirimi_check.stateChanged.connect(self.kupon_indirimi_gorunurluk)
+
+    def kupon_indirimi_gorunurluk(self):
+        state = self.kupon_indirimi_check.isChecked()
+        # kupon_indirimi_check
+        if state == True:
+            MainPage.kupon_label.setVisible(True)
+        else:
+            MainPage.kupon_label.setVisible(False)
+
+
 class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -38,19 +54,22 @@ class MainPage(QMainWindow):
         # menubar
         bar = self.menuBar()
         # add File section into menubar
-        file = bar.addMenu("File")
+        file = bar.addMenu("Dosya")
 
         # adding more items to file in menubar
-        actionNew = QAction("New", self)
+        actionNew = QAction("Yeni", self)
         file.addAction(actionNew)
-        actionOpen = QAction("Open", self)
+        actionOpen = QAction("Aç", self)
         file.addAction(actionOpen)
+        actionPref = QAction("Pref", self)
+        file.addAction(actionPref)
 
-        edit = bar.addMenu("Edit")
-        edit.addAction("Edit")
+        edit = bar.addMenu("Düzenle")
+        edit.addAction("Düzenle")
 
         actionNew.triggered.connect(lambda: print("hey"))
         actionOpen.triggered.connect(lambda: print("ey open up"))
+        actionPref.triggered.connect(lambda: self.preff())
         #
         # some global variables acrorr the app
         self.date = datetime.datetime.today().strftime("%d-%m-%Y")
@@ -87,7 +106,8 @@ class MainPage(QMainWindow):
         self.tableWidget.setColumnWidth(1, 45)
 
     def preff(self):
-        self.order_id.setText("heyyy")
+        self.win = Preferences()
+        self.win.show()
 
     def new_order(self):
         # converting customer order_id into string, we want 0001 not 1
