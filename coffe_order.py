@@ -64,14 +64,35 @@ class MainPage(QMainWindow):
         actionPref = QAction("Pref", self)
         file.addAction(actionPref)
 
+        ############################
+        #         SETTINGS         #
+        ############################
+        self.settings = QSettings("Mustafa Gumustas", "StockManager")
+
+        # ORDER PAGE
+        self.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
+        # self.settings.setValue("deneme_degeri", 40)
+
+        print(self.settings.value("deneme_degeri"))
+        ############################
+        #         SETTINGS         #
+        ############################
+        #
+        # menubar duzenlemesi
+        #
+        siparis = bar.addMenu("Siparis")
+        actionItem = QAction("Urun Ekle", self)
+        siparis.addAction(actionItem)
+
         edit = bar.addMenu("Düzenle")
         edit.addAction("Düzenle")
 
+        actionItem.triggered.connect(lambda: self.item_add())
         actionNew.triggered.connect(lambda: print("hey"))
         actionOpen.triggered.connect(lambda: print("ey open up"))
         actionPref.triggered.connect(lambda: self.preff())
         #
-        # some global variables acrorr the app
+        # some global variables across the app
         self.date = datetime.datetime.today().strftime("%d-%m-%Y")
         self.total = 0
         self.df = pd.read_csv("june.csv", sep=";", converters={"#": lambda x: str(x)})
@@ -104,6 +125,10 @@ class MainPage(QMainWindow):
 
         self.tableWidget.setColumnWidth(0, 250)
         self.tableWidget.setColumnWidth(1, 45)
+
+    def item_add(self):
+        self.win = Order_Enter()
+        self.win.show()
 
     def preff(self):
         self.win = Preferences()
@@ -305,6 +330,8 @@ class OrderPage(QDialog):
         self.new_button_pos_y += 1
 
     def ok_(self):
+        yenidd = MainPage.kupon_label.toPlainText()
+        MainPage.settings.setValue("deneme_degeri", yenidd)
         # the customer finished the ordering and its time to save
         # information of current order
         data = [
@@ -328,11 +355,14 @@ class OrderPage(QDialog):
     def cancel_order(self):
         # canceling all of the orders no saving clearing tablewidget
         MainPage.tableWidget.setRowCount(0)
-        self.current_orders = []
-        self.current_customer.orders = []
-        self.current_customer.cost = 0
-        MainPage.check.setText(str("0"))
-        self.load_order()
+        if self.current_customer is not None:
+            self.current_orders = []
+            self.current_customer.orders = []
+            self.current_customer.cost = 0
+            MainPage.check.setText(str("0"))
+            self.load_order()
+        else:
+            pass
 
     def order_click(self):
         # get the name of button triggered this function
@@ -384,6 +414,8 @@ class Order_Enter(QDialog):
     def __init__(self):
         super().__init__()
         loadUi("order_enter.ui", self)
+        self.setWindowTitle("Ürun Tablosu")
+        self.df_order = None
         self.setFixedSize(self.size())
 
         # removing second default tab
@@ -391,31 +423,81 @@ class Order_Enter(QDialog):
 
         # setting columns
         self.columns = ["Ürün", "Fiyat"]
-        self.tableWidget.setHorizontalHeaderLabels(self.columns)
-        self.tableWidget.setColumnCount(2)
-        self.tableWidget.setColumnWidth(0, 250)
-        self.tableWidget.setColumnWidth(1, 79)
+        self.urun_tablosu.setHorizontalHeaderLabels(self.columns)
+        self.urun_tablosu.setColumnCount(2)
+        self.urun_tablosu.setColumnWidth(0, 250)
+        self.urun_tablosu.setColumnWidth(1, 79)
 
         # adding rows
-        self.rowPosition = self.tableWidget.rowCount()
+        self.rowPosition = self.urun_tablosu.rowCount()
         # there is a limit for buttons, for now its 4+1 as a test
-        self.tableWidget.setRowCount(4)
-        self.tableWidget.insertRow(self.rowPosition)
-        self.onay_button.clicked.connect(self.print_list)
+        self.urun_tablosu.setRowCount(1)
+        self.urun_tablosu.insertRow(self.rowPosition)
+        self.onay_button.clicked.connect(self.get_list)
 
+        if MainPage.settings.value("ilk_kullanici_order_yukeleme_sor") == 0:
+            cevap = yes_no_gen(
+                self, message="Var olan dosyadan urunlerinizi yuklemek ister misiniz?"
+            )
+            if cevap == 65536:  # means no
+                # MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 1)
+                pass
+            elif cevap == 16384:  # means yes
+                # MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
+                options = QFileDialog.Options()
+                fileName, _ = QFileDialog.getOpenFileName(
+                    self,
+                    "QFileDialog.getOpenFileName()",
+                    "",
+                    "All Files (*);;Python Files (*.py)",
+                    options=options,
+                )
+                if fileName:
+                    self.df_order = pd.read_csv(fileName, sep=";")
+                    self.row = 0
+                    for item, price in zip(self.df_order.Ürün, self.df_order.Fiyat):
+                        self.urun_tablosu.setItem(
+                            self.row, 0, QTableWidgetItem(str(item))
+                        )
+                        self.urun_tablosu.setItem(
+                            self.row, 1, QTableWidgetItem(str(price))
+                        )
+                        self.row += 1
+
+        # self.onay_button.clicked.connect()
+
+    def get_list(self):
         # save point
-        self.df_order = pd.DataFrame(columns=self.columns)
+        self.items = item_list(
+            [
+                self.urun_tablosu.item(i, 0).text()
+                for i in range(self.urun_tablosu.rowCount())
+            ],
+            [
+                self.urun_tablosu.item(i, 1).text()
+                for i in range(self.urun_tablosu.rowCount())
+            ],
+        )
+        data = [
+            i
+            for i in map(
+                lambda x, y: [x, y], self.items.item_name, self.items.item_price
+            )
+        ]
+        df_order = pd.DataFrame(data, columns=self.columns)
 
-    def print_list(self):
-        self.df_order["Ürün"] = [
-            self.tableWidget.item(i, 0).text()
-            for i in range(self.tableWidget.rowCount())
-        ]
-        self.df_order["Fiyat"] = [
-            self.tableWidget.item(i, 1).text()
-            for i in range(self.tableWidget.rowCount())
-        ]
-        print(self.df_order)
+        df_order.to_csv("cost_2.csv", sep=";", index=False)
+
+
+def yes_no_gen(self, message="Var olan dosyadan yukelemek ksiter misiniz?", title=""):
+    msg = QMessageBox.question(
+        self,
+        title,
+        message,
+        QMessageBox.Yes | QMessageBox.No,
+        QMessageBox.No,
+    )
+    return msg
 
 
 def pop_up_gen(message, title="Uyari"):
@@ -425,6 +507,12 @@ def pop_up_gen(message, title="Uyari"):
     msg.setIcon(QMessageBox.Question)
     msg.setIcon(QMessageBox.Critical)
     msg.exec_()
+
+
+class item_list:
+    def __init__(self, item_name, item_price):
+        self.item_name = item_name
+        self.item_price = item_price
 
 
 class customer:
