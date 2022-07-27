@@ -50,7 +50,7 @@ class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("mainn.ui", self)
-
+        self.cost_filename = ''
         # menubar
         bar = self.menuBar()
         # add File section into menubar
@@ -102,22 +102,25 @@ class MainPage(QMainWindow):
         self.ui = OrderPage()
 
         # button functions
+        self.b_filtercoffee.clicked.connect(self.button_loader)
         self.order_page_button.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.page_1)
         )
-
+        self.stok_page_button.clicked.connect(
+            lambda: self.stackedWidget.setCurrentWidget(self.page_2)
+        )
         # orderpage button functional connections
         #
         # in order to create only one connect line
         # we need to iterate button names
-        buttons = {
-            self.b_filtercoffee,
-            self.b_espresso,
-            self.b_americano,
-            self.b_latte,
-        }
-        for button in buttons:
-            button.clicked.connect(self.ui.order_click)
+        # buttons = {
+        #     self.b_filtercoffee,
+        #     self.b_espresso,
+        #     self.b_americano,
+        #     self.b_latte,
+        # }
+        # for button in buttons:
+        #     button.clicked.connect(self.ui.order_click)
 
         self.ok_button.clicked.connect(self.ui.ok_)
         self.delete_button.clicked.connect(self.ui.delete_button_clicked)
@@ -147,6 +150,44 @@ class MainPage(QMainWindow):
             self.order_id.setText(new_customer_id)
             return new_customer_id
 
+    @pyqtSlot()
+    def button_loader(self):
+        self.new_button_pos_x = 0
+        self.new_button_pos_y = 0
+        itttmes = pd.read_csv('cost_2.csv', ';')
+        for i, item in enumerate(itttmes['Ürün'].values):
+            print(i, item)
+            # self.urunbutonlari_layout.setLayout(i, QFormLayout.LabelRole, self.button_creator(item))
+            if self.new_button_pos_y % 2 == 1:
+                self.urunbutonlari_layout.addLayout(self.button_creator(item), self.new_button_pos_x, 1, 1, 1)
+                self.new_button_pos_x += 1
+            else:
+                self.urunbutonlari_layout.addLayout(self.button_creator(item), self.new_button_pos_x, 0, 1, 1)
+            self.new_button_pos_y += 1
+        # this function creates
+        
+    def button_creator(self, text):
+        Hlayout = QHBoxLayout(self)
+        button = QPushButton(text, self)
+        sizePolicy = QSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(button.sizePolicy().hasHeightForWidth())
+        button.setSizePolicy(sizePolicy)
+        button.setMinimumSize(QSize(171, 61))
+        font = QFont()
+        font.setPointSize(16)
+        button.setFont(font)
+        button.setStyleSheet(
+            """border-radius:16px;
+            border-color: rgb(199, 98, 50);
+            background-color:rgb(160, 140, 110);
+            color:rgb(0, 0, 0)"""
+        )
+        button.setObjectName(f"b_{text}")
+        button.clicked.connect(self.ui.order_click)
+        Hlayout.addWidget(button)
+        return Hlayout
 
 class Stock_Editor(QDialog):
     def __init__(self):
@@ -289,45 +330,14 @@ class OrderPage(QDialog):
     def __init__(self):
         super().__init__()
         self.delete_b_counter = 0
-        self.cost_df = pd.read_csv(
-            "beverage_cost.csv", sep=";", converters={"cost": lambda x: str(x)}
-        )
+        try:
+            self.cost_df = pd.read_csv(
+                self.cost_filename, sep=";", converters={"Fiyat": lambda x: str(x)}
+            )
+        except:
+            pass
         self.current_customer = None
         self.current_orders = []
-        # self.b_filtercoffee.clicked.connect(self.button_loader)
-
-        self.new_button_pos_x = 4
-        self.new_button_pos_y = 0
-        self.llllll = ["a", "b", "c"]
-
-    @pyqtSlot()
-    def button_loader(self):
-        # this function creates
-        Hlayout = QHBoxLayout(self)
-        button2 = QPushButton(self.llllll[0], self)
-        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(button2.sizePolicy().hasHeightForWidth())
-        button2.setSizePolicy(sizePolicy)
-        button2.setMinimumSize(QSize(171, 61))
-        font = QFont()
-        font.setPointSize(16)
-        button2.setFont(font)
-        button2.setStyleSheet(
-            """border-radius:16px;
-            border-color: rgb(199, 98, 50);
-            background-color:rgb(160, 140, 110);
-            color:rgb(0, 0, 0)"""
-        )
-        button2.clicked.connect(lambda: print(button2.text()))
-        Hlayout.addWidget(button2)
-        if self.new_button_pos_y % 2 == 1:
-            self.urunbutonlari_layout.addLayout(Hlayout, self.new_button_pos_x, 1, 1, 1)
-            self.new_button_pos_x += 1
-        else:
-            self.urunbutonlari_layout.addLayout(Hlayout, self.new_button_pos_x, 0, 1, 1)
-        self.new_button_pos_y += 1
 
     def ok_(self):
         yenidd = MainPage.kupon_label.toPlainText()
@@ -383,7 +393,7 @@ class OrderPage(QDialog):
         for order in self.current_customer.orders:
             MainPage.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
             # calculating current cost
-            new_cost = self.cost_df["cost"][self.cost_df["products"] == order].values[0]
+            new_cost = self.cost_df["Fiyat"][self.cost_df["Ürün"] == order].values[0]
             self.current_customer.cost += int(new_cost)
             MainPage.total = self.current_customer.cost
             MainPage.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
@@ -431,11 +441,13 @@ class Order_Enter(QDialog):
         # adding rows
         self.rowPosition = self.urun_tablosu.rowCount()
         # there is a limit for buttons, for now its 4+1 as a test
-        self.urun_tablosu.setRowCount(1)
+        self.urun_sayisi.valueChanged.connect(self.set_length)
         self.urun_tablosu.insertRow(self.rowPosition)
+        self.onay_button.setAutoDefault(False)
         self.onay_button.clicked.connect(self.get_list)
 
         if MainPage.settings.value("ilk_kullanici_order_yukeleme_sor") == 0:
+            # this if else detecs the first use or users preference of loading
             cevap = yes_no_gen(
                 self, message="Var olan dosyadan urunlerinizi yuklemek ister misiniz?"
             )
@@ -453,8 +465,11 @@ class Order_Enter(QDialog):
                     options=options,
                 )
                 if fileName:
+                    MainPage.cost_filename = fileName
                     self.df_order = pd.read_csv(fileName, sep=";")
                     self.row = 0
+                    self.urun_tablosu.setRowCount(len(self.df_order))
+                    self.urun_sayisi.setValue(len(self.df_order))
                     for item, price in zip(self.df_order.Ürün, self.df_order.Fiyat):
                         self.urun_tablosu.setItem(
                             self.row, 0, QTableWidgetItem(str(item))
@@ -464,10 +479,16 @@ class Order_Enter(QDialog):
                         )
                         self.row += 1
 
-        # self.onay_button.clicked.connect()
+        self.onay_button.clicked.connect(MainPage.button_loader)
+    def set_length(self):
+        satir = self.urun_sayisi.value()
+        self.urun_tablosu.setRowCount(int(satir))
+
+
 
     def get_list(self):
         # save point
+        # self.urun_tablosu.setRowCount(0)
         self.items = item_list(
             [
                 self.urun_tablosu.item(i, 0).text()
