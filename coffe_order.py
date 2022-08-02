@@ -35,34 +35,71 @@ class Preferences(QDialog):
         super().__init__()
         loadUi("preferences.ui", self)
         self.setWindowTitle("Preferences")
-        self.kupon_indirimi_check.stateChanged.connect(self.kupon_indirimi_gorunurluk)
+
+        # kupon indirimi
+        self.kupon_indirimi_checkbox.setChecked(
+            MainPage.settings.value("pref_kupon_kodu_goster")
+        )
+        self.kupon_indirimi_checkbox.stateChanged.connect(
+            self.kupon_indirimi_gorunurluk
+        )
+
+        self.kategori_checkbox.stateChanged.connect(self.kategori_durumu)
+        print(MainPage.settings.value("kategori_kullanimi"), "kategorrr")
+        # kategori
+        # self.kategori_checkbox.setChecked(MainPage.settings.value("kategori_kullanimi"))
+
+    def kategori_durumu(self):
+        kategori_durumu = self.kategori_checkbox.isChecked()
+        MainPage.settings.setValue("kategori_kullanimi", kategori_durumu)
+        print(MainPage.settings.value("kategori_kullanimi"), "kategorrr")
 
     def kupon_indirimi_gorunurluk(self):
-        state = self.kupon_indirimi_check.isChecked()
-        # kupon_indirimi_check
-        if state == True:
-            MainPage.kupon_label.setVisible(True)
-        else:
-            MainPage.kupon_label.setVisible(False)
+        state = self.kupon_indirimi_checkbox.isChecked()
+        MainPage.kupon_label.setVisible(state)
+        MainPage.settings.setValue("pref_kupon_kodu_goster", state)
 
 
 class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("mainn.ui", self)
-        self.cost_filename = ''
-        # menubar
+        self.cost_filename = ""
+        ############################
+        #         MENUBAR          #
+        ############################
         bar = self.menuBar()
         # add File section into menubar
         file = bar.addMenu("Dosya")
 
         # adding more items to file in menubar
         actionNew = QAction("Yeni", self)
-        file.addAction(actionNew)
         actionOpen = QAction("Aç", self)
+        actionPref = QAction("Tercihler", self)
+
         file.addAction(actionOpen)
-        actionPref = QAction("Pref", self)
+        file.addAction(actionNew)
+        file.addSeparator()
         file.addAction(actionPref)
+
+        #
+        # menubar duzenlemesi
+        #
+        siparis = bar.addMenu("Siparis")
+        actionAddItem = QAction("Ürün Ekle", self)
+        actionEditItem = QAction("Ürünleri Düzenle", self)
+        actionAccItemFromFile = QAction("Dosya Üzerinden Urun Ekle", self)
+        siparis.addAction(actionAddItem)
+        siparis.addAction(actionEditItem)
+        siparis.addAction(actionAccItemFromFile)
+
+        edit = bar.addMenu("Düzenle")
+        edit.addAction("Düzenle")
+
+        actionAddItem.triggered.connect(lambda: self.item_add())
+        actionNew.triggered.connect(lambda: print("hey"))
+        actionOpen.triggered.connect(lambda: print("ey open up"))
+        actionPref.triggered.connect(lambda: self.preff())
 
         ############################
         #         SETTINGS         #
@@ -71,26 +108,12 @@ class MainPage(QMainWindow):
 
         # ORDER PAGE
         self.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
-        # self.settings.setValue("deneme_degeri", 40)
 
-        print(self.settings.value("deneme_degeri"))
         ############################
-        #         SETTINGS         #
+        #        Preferences       #
         ############################
-        #
-        # menubar duzenlemesi
-        #
-        siparis = bar.addMenu("Siparis")
-        actionItem = QAction("Urun Ekle", self)
-        siparis.addAction(actionItem)
+        self.kupon_label.setVisible(self.settings.value("pref_kupon_kodu_goster"))
 
-        edit = bar.addMenu("Düzenle")
-        edit.addAction("Düzenle")
-
-        actionItem.triggered.connect(lambda: self.item_add())
-        actionNew.triggered.connect(lambda: print("hey"))
-        actionOpen.triggered.connect(lambda: print("ey open up"))
-        actionPref.triggered.connect(lambda: self.preff())
         #
         # some global variables across the app
         self.date = datetime.datetime.today().strftime("%d-%m-%Y")
@@ -109,18 +132,6 @@ class MainPage(QMainWindow):
         self.stok_page_button.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.page_2)
         )
-        # orderpage button functional connections
-        #
-        # in order to create only one connect line
-        # we need to iterate button names
-        # buttons = {
-        #     self.b_filtercoffee,
-        #     self.b_espresso,
-        #     self.b_americano,
-        #     self.b_latte,
-        # }
-        # for button in buttons:
-        #     button.clicked.connect(self.ui.order_click)
 
         self.ok_button.clicked.connect(self.ui.ok_)
         self.delete_button.clicked.connect(self.ui.delete_button_clicked)
@@ -154,18 +165,22 @@ class MainPage(QMainWindow):
     def button_loader(self):
         self.new_button_pos_x = 0
         self.new_button_pos_y = 0
-        itttmes = pd.read_csv('cost_2.csv', ';')
-        for i, item in enumerate(itttmes['Ürün'].values):
+        itttmes = pd.read_csv(MainPage.settings.value("items_cost_file_name"), ";")
+        for i, item in enumerate(itttmes["Ürün"].values):
             print(i, item)
             # self.urunbutonlari_layout.setLayout(i, QFormLayout.LabelRole, self.button_creator(item))
             if self.new_button_pos_y % 2 == 1:
-                self.urunbutonlari_layout.addLayout(self.button_creator(item), self.new_button_pos_x, 1, 1, 1)
+                self.urunbutonlari_layout.addLayout(
+                    self.button_creator(item), self.new_button_pos_x, 1, 1, 1
+                )
                 self.new_button_pos_x += 1
             else:
-                self.urunbutonlari_layout.addLayout(self.button_creator(item), self.new_button_pos_x, 0, 1, 1)
+                self.urunbutonlari_layout.addLayout(
+                    self.button_creator(item), self.new_button_pos_x, 0, 1, 1
+                )
             self.new_button_pos_y += 1
         # this function creates
-        
+
     def button_creator(self, text):
         Hlayout = QHBoxLayout(self)
         button = QPushButton(text, self)
@@ -188,6 +203,7 @@ class MainPage(QMainWindow):
         button.clicked.connect(self.ui.order_click)
         Hlayout.addWidget(button)
         return Hlayout
+
 
 class Stock_Editor(QDialog):
     def __init__(self):
@@ -432,7 +448,10 @@ class Order_Enter(QDialog):
         self.tabWidget.removeTab(1)
 
         # setting columns
-        self.columns = ["Ürün", "Fiyat"]
+        if MainPage.settings.value("kategori_kullanimi"):
+            pass
+        else:
+            self.columns = ["Ürün", "Fiyat"]
         self.urun_tablosu.setHorizontalHeaderLabels(self.columns)
         self.urun_tablosu.setColumnCount(2)
         self.urun_tablosu.setColumnWidth(0, 250)
@@ -445,17 +464,17 @@ class Order_Enter(QDialog):
         self.urun_tablosu.insertRow(self.rowPosition)
         self.onay_button.setAutoDefault(False)
         self.onay_button.clicked.connect(self.get_list)
-
+        # this if else detecs the first use or users preference of)
         if MainPage.settings.value("ilk_kullanici_order_yukeleme_sor") == 0:
             # this if else detecs the first use or users preference of loading
             cevap = yes_no_gen(
                 self, message="Var olan dosyadan urunlerinizi yuklemek ister misiniz?"
             )
             if cevap == 65536:  # means no
-                # MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 1)
+                MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 1)
                 pass
             elif cevap == 16384:  # means yes
-                # MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
+                MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
                 options = QFileDialog.Options()
                 fileName, _ = QFileDialog.getOpenFileName(
                     self,
@@ -465,7 +484,7 @@ class Order_Enter(QDialog):
                     options=options,
                 )
                 if fileName:
-                    MainPage.cost_filename = fileName
+                    MainPage.settings.setValue("items_cost_file_name", fileName)
                     self.df_order = pd.read_csv(fileName, sep=";")
                     self.row = 0
                     self.urun_tablosu.setRowCount(len(self.df_order))
@@ -480,11 +499,10 @@ class Order_Enter(QDialog):
                         self.row += 1
 
         self.onay_button.clicked.connect(MainPage.button_loader)
+
     def set_length(self):
         satir = self.urun_sayisi.value()
         self.urun_tablosu.setRowCount(int(satir))
-
-
 
     def get_list(self):
         # save point
