@@ -43,16 +43,14 @@ class Preferences(QDialog):
         self.kupon_indirimi_checkbox.stateChanged.connect(
             self.kupon_indirimi_gorunurluk
         )
+        self.kategori_checkbox.setChecked(MainPage.settings.value("kategori_kullanimi"))
 
-        self.kategori_checkbox.stateChanged.connect(self.kategori_durumu)
-        print(MainPage.settings.value("kategori_kullanimi"), "kategorrr")
         # kategori
-        # self.kategori_checkbox.setChecked(MainPage.settings.value("kategori_kullanimi"))
+        self.kategori_checkbox.stateChanged.connect(self.kategori_durumu)
 
     def kategori_durumu(self):
         kategori_durumu = self.kategori_checkbox.isChecked()
         MainPage.settings.setValue("kategori_kullanimi", kategori_durumu)
-        print(MainPage.settings.value("kategori_kullanimi"), "kategorrr")
 
     def kupon_indirimi_gorunurluk(self):
         state = self.kupon_indirimi_checkbox.isChecked()
@@ -109,6 +107,7 @@ class MainPage(QMainWindow):
         # ORDER PAGE
         self.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
 
+        self.settings.value("kategori_kullanimi")
         ############################
         #        Preferences       #
         ############################
@@ -125,7 +124,8 @@ class MainPage(QMainWindow):
         self.ui = OrderPage()
 
         # button functions
-        self.b_filtercoffee.clicked.connect(self.button_loader)
+        self.button_loader()
+        # self.b_filtercoffee.clicked.connect(self.button_loader)
         self.order_page_button.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.page_1)
         )
@@ -165,7 +165,7 @@ class MainPage(QMainWindow):
     def button_loader(self):
         self.new_button_pos_x = 0
         self.new_button_pos_y = 0
-        itttmes = pd.read_csv(MainPage.settings.value("items_cost_file_name"), ";")
+        itttmes = pd.read_csv(self.settings.value("items_cost_file_name"), ";")
         for i, item in enumerate(itttmes["Ürün"].values):
             print(i, item)
             # self.urunbutonlari_layout.setLayout(i, QFormLayout.LabelRole, self.button_creator(item))
@@ -448,14 +448,48 @@ class Order_Enter(QDialog):
         self.tabWidget.removeTab(1)
 
         # setting columns
-        if MainPage.settings.value("kategori_kullanimi"):
-            pass
-        else:
-            self.columns = ["Ürün", "Fiyat"]
-        self.urun_tablosu.setHorizontalHeaderLabels(self.columns)
+        # if MainPage.settings.value("kategori_kullanimi"):
+        #     pass
+        # else:
+        #     self.columns = ["Ürün", "Fiyat"]
+
+        self.urun_tablosu.setHorizontalHeaderLabels(["Ürün", "Fiyat"])
         self.urun_tablosu.setColumnCount(2)
         self.urun_tablosu.setColumnWidth(0, 250)
         self.urun_tablosu.setColumnWidth(1, 79)
+        # PREFERENCES
+        if MainPage.settings.value("kategori_kullanimi"):
+            pass
+        else:
+            self.tabWidget.setParent(None)
+            # creating from scratch
+            self.gridLayout = QGridLayout(self)
+            self.gridLayout.setObjectName("gridLayout")
+            self.horizontalLayout = QHBoxLayout()
+            self.horizontalLayout.setObjectName("horizontalLayout")
+            self.urun_sayisi = QSpinBox(self)
+            self.urun_sayisi.setObjectName("urun_sayisi")
+            self.horizontalLayout.addWidget(self.urun_sayisi)
+            self.onay_button = QPushButton("onay_button", self)
+            self.onay_button.setObjectName("onay_button")
+            self.horizontalLayout.addWidget(self.onay_button)
+            self.gridLayout.addLayout(self.horizontalLayout, 2, 0, 1, 1)
+            self.urun_tablosu = QTableWidget(self)
+            self.urun_tablosu.setObjectName("urun_tablosu")
+            self.urun_tablosu.setColumnCount(2)
+            self.urun_tablosu.setRowCount(0)
+            item = QTableWidgetItem("Ürün")
+            self.urun_tablosu.setHorizontalHeaderItem(0, item)
+            item = QTableWidgetItem("Fiyat")
+            self.urun_tablosu.setHorizontalHeaderItem(1, item)
+            self.urun_tablosu.setColumnWidth(0, 250)
+            self.urun_tablosu.setColumnWidth(1, 79)
+            self.gridLayout.addWidget(self.urun_tablosu, 0, 0, 1, 1)
+        # SETTINGS
+        self.new_tab_button.setEnabled(MainPage.settings.value("kategori_kullanimi"))
+        self.kategori_ekle_edit.setEnabled(
+            MainPage.settings.value("kategori_kullanimi")
+        )
 
         # adding rows
         self.rowPosition = self.urun_tablosu.rowCount()
