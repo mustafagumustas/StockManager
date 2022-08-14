@@ -84,17 +84,15 @@ class MainPage(QMainWindow):
         # menubar duzenlemesi
         #
         siparis = bar.addMenu("Siparis")
-        actionAddItem = QAction("Ürün Ekle", self)
-        actionEditItem = QAction("Ürünleri Düzenle", self)
+        actionItems = QAction("Ürünler", self)
         actionAccItemFromFile = QAction("Dosya Üzerinden Urun Ekle", self)
-        siparis.addAction(actionAddItem)
-        siparis.addAction(actionEditItem)
+        siparis.addAction(actionItems)
         siparis.addAction(actionAccItemFromFile)
 
         edit = bar.addMenu("Düzenle")
         edit.addAction("Düzenle")
 
-        actionAddItem.triggered.connect(lambda: self.item_add())
+        actionItems.triggered.connect(lambda: self.item_add())
         actionNew.triggered.connect(lambda: print("hey"))
         actionOpen.triggered.connect(lambda: print("ey open up"))
         actionPref.triggered.connect(lambda: self.preff())
@@ -105,7 +103,7 @@ class MainPage(QMainWindow):
         self.settings = QSettings("Mustafa Gumustas", "StockManager")
 
         # ORDER PAGE
-        self.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
+        # self.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
 
         self.settings.value("kategori_kullanimi")
         ############################
@@ -167,8 +165,6 @@ class MainPage(QMainWindow):
         self.new_button_pos_y = 0
         itttmes = pd.read_csv(self.settings.value("items_cost_file_name"), ";")
         for i, item in enumerate(itttmes["Ürün"].values):
-            print(i, item)
-            # self.urunbutonlari_layout.setLayout(i, QFormLayout.LabelRole, self.button_creator(item))
             if self.new_button_pos_y % 2 == 1:
                 self.urunbutonlari_layout.addLayout(
                     self.button_creator(item), self.new_button_pos_x, 1, 1, 1
@@ -179,7 +175,6 @@ class MainPage(QMainWindow):
                     self.button_creator(item), self.new_button_pos_x, 0, 1, 1
                 )
             self.new_button_pos_y += 1
-        # this function creates
 
     def button_creator(self, text):
         Hlayout = QHBoxLayout(self)
@@ -356,8 +351,6 @@ class OrderPage(QDialog):
         self.current_orders = []
 
     def ok_(self):
-        yenidd = MainPage.kupon_label.toPlainText()
-        MainPage.settings.setValue("deneme_degeri", yenidd)
         # the customer finished the ordering and its time to save
         # information of current order
         data = [
@@ -440,18 +433,24 @@ class Order_Enter(QDialog):
     def __init__(self):
         super().__init__()
         loadUi("order_enter.ui", self)
-        self.setWindowTitle("Ürun Tablosu")
+        self.setWindowTitle("Ürün Tablosu")
         self.df_order = None
         self.setFixedSize(self.size())
 
         # removing second default tab
         self.tabWidget.removeTab(1)
 
+        # loading items into table if user wanted to use the same file later
+        if MainPage.settings.value("continue_use_selected_csv") == 16384:
+            self.order_loader()
+        else:
+            pass
+
         # setting columns
         # if MainPage.settings.value("kategori_kullanimi"):
         #     pass
         # else:
-        #     self.columns = ["Ürün", "Fiyat"]
+        self.columns = ["Ürün", "Fiyat"]
 
         self.urun_tablosu.setHorizontalHeaderLabels(["Ürün", "Fiyat"])
         self.urun_tablosu.setColumnCount(2)
@@ -462,7 +461,7 @@ class Order_Enter(QDialog):
             pass
         else:
             self.tabWidget.setParent(None)
-            # creating from scratch
+            # creating page from scratch without categories
             self.gridLayout = QGridLayout(self)
             self.gridLayout.setObjectName("gridLayout")
             self.horizontalLayout = QHBoxLayout()
@@ -478,61 +477,54 @@ class Order_Enter(QDialog):
             self.urun_tablosu.setObjectName("urun_tablosu")
             self.urun_tablosu.setColumnCount(2)
             self.urun_tablosu.setRowCount(0)
-            item = QTableWidgetItem("Ürün")
-            self.urun_tablosu.setHorizontalHeaderItem(0, item)
-            item = QTableWidgetItem("Fiyat")
-            self.urun_tablosu.setHorizontalHeaderItem(1, item)
+            self.urun_tablosu.setHorizontalHeaderLabels(["Ürün", "Fiyat"])
             self.urun_tablosu.setColumnWidth(0, 250)
             self.urun_tablosu.setColumnWidth(1, 79)
             self.gridLayout.addWidget(self.urun_tablosu, 0, 0, 1, 1)
         # SETTINGS
         self.new_tab_button.setEnabled(MainPage.settings.value("kategori_kullanimi"))
-        self.kategori_ekle_edit.setEnabled(
-            MainPage.settings.value("kategori_kullanimi")
-        )
 
         # adding rows
         self.rowPosition = self.urun_tablosu.rowCount()
-        # there is a limit for buttons, for now its 4+1 as a test
         self.urun_sayisi.valueChanged.connect(self.set_length)
         self.urun_tablosu.insertRow(self.rowPosition)
         self.onay_button.setAutoDefault(False)
         self.onay_button.clicked.connect(self.get_list)
-        # this if else detecs the first use or users preference of)
-        if MainPage.settings.value("ilk_kullanici_order_yukeleme_sor") == 0:
-            # this if else detecs the first use or users preference of loading
-            cevap = yes_no_gen(
-                self, message="Var olan dosyadan urunlerinizi yuklemek ister misiniz?"
-            )
-            if cevap == 65536:  # means no
-                MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 1)
-                pass
-            elif cevap == 16384:  # means yes
-                MainPage.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
-                options = QFileDialog.Options()
-                fileName, _ = QFileDialog.getOpenFileName(
-                    self,
-                    "QFileDialog.getOpenFileName()",
-                    "",
-                    "All Files (*);;Python Files (*.py)",
-                    options=options,
-                )
-                if fileName:
-                    MainPage.settings.setValue("items_cost_file_name", fileName)
-                    self.df_order = pd.read_csv(fileName, sep=";")
-                    self.row = 0
-                    self.urun_tablosu.setRowCount(len(self.df_order))
-                    self.urun_sayisi.setValue(len(self.df_order))
-                    for item, price in zip(self.df_order.Ürün, self.df_order.Fiyat):
-                        self.urun_tablosu.setItem(
-                            self.row, 0, QTableWidgetItem(str(item))
-                        )
-                        self.urun_tablosu.setItem(
-                            self.row, 1, QTableWidgetItem(str(price))
-                        )
-                        self.row += 1
+        self.load_from_file_btn.clicked.connect(self.file_opener)
 
         self.onay_button.clicked.connect(MainPage.button_loader)
+
+    def order_loader(self):
+        fileName = MainPage.settings.value("items_cost_file_name")
+        self.df_order = pd.read_csv(fileName, sep=";")
+        self.row = 0
+        self.urun_tablosu.setRowCount(len(self.df_order))
+        self.urun_sayisi.setValue(len(self.df_order) - 1)
+        for item, price in zip(self.df_order.Ürün, self.df_order.Fiyat):
+            self.urun_tablosu.setItem(self.row, 0, QTableWidgetItem(str(item)))
+            self.urun_tablosu.setItem(self.row, 1, QTableWidgetItem(str(price)))
+            self.row += 1
+        self.urun_tablosu.setRowCount(len(self.df_order))
+        MainPage.button_loader()
+
+    def file_opener(self):
+        options = QFileDialog.Options()
+        fileName, _ = QFileDialog.getOpenFileName(
+            self,
+            "QFileDialog.getOpenFileName()",
+            "",
+            "All Files (*.csv);;CSV Files (*.csv)",
+            options=options,
+        )
+        continue_use = yes_no_gen(
+            self, message="Bu dosyayi daha sonra da kullanmak ister misiniz?"
+        )
+        MainPage.settings.setValue("continue_use_selected_csv", continue_use)
+        if continue_use == 16384:
+            MainPage.settings.setValue("items_cost_file_name", fileName)
+        else:
+            pass
+        self.order_loader()
 
     def set_length(self):
         satir = self.urun_sayisi.value()
@@ -541,28 +533,33 @@ class Order_Enter(QDialog):
     def get_list(self):
         # save point
         # self.urun_tablosu.setRowCount(0)
-        self.items = item_list(
-            [
-                self.urun_tablosu.item(i, 0).text()
-                for i in range(self.urun_tablosu.rowCount())
-            ],
-            [
-                self.urun_tablosu.item(i, 1).text()
-                for i in range(self.urun_tablosu.rowCount())
-            ],
-        )
-        data = [
-            i
-            for i in map(
-                lambda x, y: [x, y], self.items.item_name, self.items.item_price
+        try:
+            self.items = item_list(
+                [
+                    self.urun_tablosu.item(i, 0).text()
+                    for i in range(self.urun_tablosu.rowCount())
+                ],
+                [
+                    self.urun_tablosu.item(i, 1).text()
+                    for i in range(self.urun_tablosu.rowCount())
+                ],
             )
-        ]
-        df_order = pd.DataFrame(data, columns=self.columns)
+            data = [
+                i
+                for i in map(
+                    lambda x, y: [x, y], self.items.item_name, self.items.item_price
+                )
+            ]
+            df_order = pd.DataFrame(data, columns=self.columns)
 
-        df_order.to_csv("cost_2.csv", sep=";", index=False)
+            df_order.to_csv("cost_2.csv", sep=";", index=False)
+        except AttributeError:
+            pop_up_gen(
+                "There are empty rows inside the items, please try again after filling them!"
+            )
 
 
-def yes_no_gen(self, message="Var olan dosyadan yukelemek ksiter misiniz?", title=""):
+def yes_no_gen(self, message="Var olan dosyadan yukelemek ister misiniz?", title=""):
     msg = QMessageBox.question(
         self,
         title,
