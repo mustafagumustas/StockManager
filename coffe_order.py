@@ -62,7 +62,6 @@ class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("mainn.ui", self)
-        self.cost_filename = ""
         ############################
         #         MENUBAR          #
         ############################
@@ -101,7 +100,7 @@ class MainPage(QMainWindow):
         #         SETTINGS         #
         ############################
         self.settings = QSettings("Mustafa Gumustas", "StockManager")
-
+        self.cost_filename = self.settings.value("items_cost_file_name")
         # ORDER PAGE
         # self.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
 
@@ -122,7 +121,10 @@ class MainPage(QMainWindow):
         self.ui = OrderPage()
 
         # button functions
-        self.button_loader()
+        if self.settings.value("continue_use_selected_csv") == 16384:
+            self.button_loader()
+        else:
+            pass
         # self.b_filtercoffee.clicked.connect(self.button_loader)
         self.order_page_button.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.page_1)
