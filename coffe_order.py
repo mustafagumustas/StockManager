@@ -62,6 +62,7 @@ class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("mainn.ui", self)
+        self.ui = OrderPage()
         ############################
         #         MENUBAR          #
         ############################
@@ -100,9 +101,27 @@ class MainPage(QMainWindow):
         #         SETTINGS         #
         ############################
         self.settings = QSettings("Mustafa Gumustas", "StockManager")
-        self.cost_filename = self.settings.value("items_cost_file_name")
-        # ORDER PAGE
-        # self.settings.setValue("ilk_kullanici_order_yukeleme_sor", 0)
+
+        # ORDER PAGE SETTINGS
+        if self.settings.value("continue_use_selected_csv") == 16384:
+            # 16384 means yes
+            if self.settings.value("items_cost_file_name"):
+                self.button_loader()
+            else:
+                print("user wantec to load again but file not found")
+        elif self.settings.value("continue_use_selected_csv") == 65536:
+            # 65536 means no
+            self.filename = self.file_opener()
+            self.cost_df = pd.read_csv(self.filename, sep=";")
+            self.button_loader()
+            self.continue_use = yes_no_gen(
+                self, message="Bu dosyayi daha sonra da kullanmak ister misiniz?"
+            )
+            self.settings.setValue("continue_use_selected_csv", self.continue_use)
+            if self.continue_use == 16384:
+                self.settings.setValue("items_cost_file_name", self.fileName)
+            else:
+                pass
 
         self.settings.value("kategori_kullanimi")
         ############################
@@ -118,14 +137,10 @@ class MainPage(QMainWindow):
 
         self.setWindowTitle("StockManager")
         self.new_order()
-        self.ui = OrderPage()
 
         # button functions
-        if self.settings.value("continue_use_selected_csv") == 16384:
-            self.button_loader()
-        else:
-            pass
-        # self.b_filtercoffee.clicked.connect(self.button_loader)
+        # REMOVE BELOW LATER NONFUNCTIONAL ANYMORE
+        # self.button_loader()
         self.order_page_button.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.page_1)
         )
@@ -200,6 +215,17 @@ class MainPage(QMainWindow):
         button.clicked.connect(self.ui.order_click)
         Hlayout.addWidget(button)
         return Hlayout
+
+    def file_opener(self):
+        options = QFileDialog.Options()
+        fileName, _ = QFileDialog.getOpenFileName(
+            self,
+            "QFileDialog.getOpenFileName()",
+            "",
+            "All Files (*.csv);;CSV Files (*.csv)",
+            options=options,
+        )
+        return fileName
 
 
 class Stock_Editor(QDialog):
@@ -345,10 +371,12 @@ class OrderPage(QDialog):
         self.delete_b_counter = 0
         try:
             self.cost_df = pd.read_csv(
-                self.cost_filename, sep=";", converters={"Fiyat": lambda x: str(x)}
+                MainPage.settings.value("items_cost_file_name"),
+                sep=";",
+                converters={"Fiyat": lambda x: str(x)},
             )
         except:
-            pass
+            print("error reading cost file")
         self.current_customer = None
         self.current_orders = []
 
@@ -404,7 +432,9 @@ class OrderPage(QDialog):
         for order in self.current_customer.orders:
             MainPage.tableWidget.setItem(self.row, 0, QTableWidgetItem(str(order)))
             # calculating current cost
-            new_cost = self.cost_df["Fiyat"][self.cost_df["Ürün"] == order].values[0]
+            new_cost = MainPage.cost_df["Fiyat"][
+                MainPage.cost_df["Ürün"] == order
+            ].values[0]
             self.current_customer.cost += int(new_cost)
             MainPage.total = self.current_customer.cost
             MainPage.tableWidget.setItem(self.row, 1, QTableWidgetItem(str(new_cost)))
@@ -448,10 +478,6 @@ class Order_Enter(QDialog):
         else:
             pass
 
-        # setting columns
-        # if MainPage.settings.value("kategori_kullanimi"):
-        #     pass
-        # else:
         self.columns = ["Ürün", "Fiyat"]
 
         self.urun_tablosu.setHorizontalHeaderLabels(["Ürün", "Fiyat"])
@@ -492,13 +518,14 @@ class Order_Enter(QDialog):
         self.urun_tablosu.insertRow(self.rowPosition)
         self.onay_button.setAutoDefault(False)
         self.onay_button.clicked.connect(self.get_list)
-        self.load_from_file_btn.clicked.connect(self.file_opener)
+        self.load_from_file_btn.clicked.connect(MainPage.file_opener)
 
         self.onay_button.clicked.connect(MainPage.button_loader)
+        self.fileName = MainPage.settings.value("items_cost_file_name")
 
     def order_loader(self):
-        fileName = MainPage.settings.value("items_cost_file_name")
-        self.df_order = pd.read_csv(fileName, sep=";")
+        # fileName = MainPage.settings.value("items_cost_file_name")
+        self.df_order = pd.read_csv(self.fileName, sep=";")
         self.row = 0
         self.urun_tablosu.setRowCount(len(self.df_order))
         self.urun_sayisi.setValue(len(self.df_order) - 1)
@@ -506,27 +533,7 @@ class Order_Enter(QDialog):
             self.urun_tablosu.setItem(self.row, 0, QTableWidgetItem(str(item)))
             self.urun_tablosu.setItem(self.row, 1, QTableWidgetItem(str(price)))
             self.row += 1
-        self.urun_tablosu.setRowCount(len(self.df_order))
         MainPage.button_loader()
-
-    def file_opener(self):
-        options = QFileDialog.Options()
-        fileName, _ = QFileDialog.getOpenFileName(
-            self,
-            "QFileDialog.getOpenFileName()",
-            "",
-            "All Files (*.csv);;CSV Files (*.csv)",
-            options=options,
-        )
-        continue_use = yes_no_gen(
-            self, message="Bu dosyayi daha sonra da kullanmak ister misiniz?"
-        )
-        MainPage.settings.setValue("continue_use_selected_csv", continue_use)
-        if continue_use == 16384:
-            MainPage.settings.setValue("items_cost_file_name", fileName)
-        else:
-            pass
-        self.order_loader()
 
     def set_length(self):
         satir = self.urun_sayisi.value()
