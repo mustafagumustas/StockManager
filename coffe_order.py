@@ -3,6 +3,7 @@ from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, Qt, QSize, QSettings
 from PyQt5.QtGui import QIcon, QColor, QFont
+from PyQt5 import QtWidgets
 import pandas as pd
 import datetime
 from PyQt5.QtCore import pyqtSlot
@@ -23,7 +24,7 @@ class LoginPage(QDialog):
         ):
             self.win = MainPage()
             self.win.showMaximized()
-            self.close()
+            self.accept()
         else:
             print(self.username.text())
             print(self.password.text())
@@ -62,6 +63,7 @@ class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("mainn.ui", self)
+        self.tabWidget_2.removeTab(1)
         self.ui = OrderPage()
         ############################
         #         MENUBAR          #
@@ -103,25 +105,7 @@ class MainPage(QMainWindow):
         self.settings = QSettings("Mustafa Gumustas", "StockManager")
 
         # ORDER PAGE SETTINGS
-        if self.settings.value("continue_use_selected_csv") == 16384:
-            # 16384 means yes
-            if self.settings.value("items_cost_file_name"):
-                self.button_loader()
-            else:
-                print("user wantec to load again but file not found")
-        elif self.settings.value("continue_use_selected_csv") == 65536:
-            # 65536 means no
-            self.filename = self.file_opener()
-            self.cost_df = pd.read_csv(self.filename, sep=";")
-            self.button_loader()
-            self.continue_use = yes_no_gen(
-                self, message="Bu dosyayi daha sonra da kullanmak ister misiniz?"
-            )
-            self.settings.setValue("continue_use_selected_csv", self.continue_use)
-            if self.continue_use == 16384:
-                self.settings.setValue("items_cost_file_name", self.fileName)
-            else:
-                pass
+        # created function from this continue_use(self)
 
         self.settings.value("kategori_kullanimi")
         ############################
@@ -154,6 +138,27 @@ class MainPage(QMainWindow):
 
         self.tableWidget.setColumnWidth(0, 250)
         self.tableWidget.setColumnWidth(1, 45)
+
+    def continue_use(self):
+        if self.settings.value("continue_use_selected_csv") == 16384:
+            # 16384 means yes
+            if self.settings.value("items_cost_file_name"):
+                self.button_loader()
+            else:
+                print("user wanted to load again but file not found")
+        elif self.settings.value("continue_use_selected_csv") == 65536:
+            # 65536 means no
+            self.filename = self.file_opener()
+            self.cost_df = pd.read_csv(self.filename, sep=";")
+            self.button_loader()
+            self.continue_use = yes_no_gen(
+                self, message="Bu dosyayi daha sonra da kullanmak ister misiniz?"
+            )
+            self.settings.setValue("continue_use_selected_csv", self.continue_use)
+            if self.continue_use == 16384:
+                self.settings.setValue("items_cost_file_name", self.fileName)
+            else:
+                pass
 
     def item_add(self):
         self.win = Order_Enter()
@@ -473,10 +478,12 @@ class Order_Enter(QDialog):
         self.tabWidget.removeTab(1)
 
         # loading items into table if user wanted to use the same file later
+
+        # WHY THERE IS IF ELSE IN HERE IDK GONNA FIND OUT LATER
         if MainPage.settings.value("continue_use_selected_csv") == 16384:
             self.order_loader()
         else:
-            pass
+            self.order_loader()
 
         self.columns = ["Ürün", "Fiyat"]
 
@@ -524,11 +531,12 @@ class Order_Enter(QDialog):
         self.fileName = MainPage.settings.value("items_cost_file_name")
 
     def order_loader(self):
-        # fileName = MainPage.settings.value("items_cost_file_name")
-        self.df_order = pd.read_csv(self.fileName, sep=";")
+        self.df_order = pd.read_csv(
+            MainPage.settings.value("items_cost_file_name"), sep=";"
+        )
         self.row = 0
         self.urun_tablosu.setRowCount(len(self.df_order))
-        self.urun_sayisi.setValue(len(self.df_order) - 1)
+        self.urun_sayisi.setValue(len(self.df_order))
         for item, price in zip(self.df_order.Ürün, self.df_order.Fiyat):
             self.urun_tablosu.setItem(self.row, 0, QTableWidgetItem(str(item)))
             self.urun_tablosu.setItem(self.row, 1, QTableWidgetItem(str(price)))
@@ -607,6 +615,9 @@ class customer:
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
-    MainPage = MainPage()
-    MainPage.showMaximized()
-    sys.exit(app.exec_())
+    # MainPage = MainPage()
+    login = LoginPage()
+    if login.exec_() == QtWidgets.QDialog.Accepted:
+        MainPage = MainPage()
+        MainPage.showMaximized()
+        sys.exit(app.exec_())
