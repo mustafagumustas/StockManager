@@ -1,10 +1,8 @@
-from fileinput import filename
 import sys
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import pyqtSignal, Qt, QSize, QSettings
 from PyQt5.QtGui import QIcon, QColor, QFont
-from PyQt5 import QtWidgets
 import pandas as pd
 import datetime
 from PyQt5.QtCore import pyqtSlot
@@ -13,19 +11,19 @@ from PyQt5.QtCore import pyqtSlot
 class LoginPage(QDialog):
     def __init__(self):
         super().__init__()
-        loadUi("login.ui", self)
+        loadUi("view/login.ui", self)
         self.admin_username = "must"
         self.admin_password = "1234"
-        self.login_button.clicked.connect(self.HandleLogin)
+        self.login_button.clicked.connect(self.log_user)
 
-    def HandleLogin(self):
+    def log_user(self):
         if (
             self.username.text() == self.admin_username
             and self.password.text() == self.admin_password
         ):
             self.win = MainPage()
             self.win.showMaximized()
-            self.accept()
+            self.close()
         else:
             print(self.username.text())
             print(self.password.text())
@@ -35,50 +33,20 @@ class LoginPage(QDialog):
 class Preferences(QDialog):
     def __init__(self):
         super().__init__()
-        loadUi("preferences.ui", self)
+        loadUi("view/preferences.ui", self)
         self.setWindowTitle("Preferences")
-        self.chhh = []
-        # kupon indirimi
-        self.tercihler_layout.addLayout(
-            self.add_preff("Kupon indirimi", self.kupon_indirimi_gorunurluk)
-        )
-        # self.kupon_indirimi_checkbox.setChecked(
-        #     MainPage.settings.value("pref_kupon_kodu_goster")
-        # )
 
-        # self.tercihler_layout.addLayout(self.add_preff("merhaba", Preferences.pp))
+        # kupon indirimi
+        self.kupon_indirimi_checkbox.setChecked(
+            MainPage.settings.value("pref_kupon_kodu_goster")
+        )
+        self.kupon_indirimi_checkbox.stateChanged.connect(
+            self.kupon_indirimi_gorunurluk
+        )
+        self.kategori_checkbox.setChecked(MainPage.settings.value("kategori_kullanimi"))
 
         # kategori
-        self.tercihler_layout.addLayout(
-            self.add_preff("Kategori", self.kategori_durumu)
-        )
-
-        # self.kategori_checkbox.setChecked(MainPage.settings.value("kategori_kullanimi"))
-
-    def pp(self):
-        print("heyeyeyeyeye")
-
-    @pyqtSlot()
-    def add_preff(self, text, settings_key, **kwargs):
-        # creates preferences checkbox with name "text_checkbox"
-
-        # you must create the function before creting checkbox
-        # otherwise it won't work
-
-        # user must give the settings value name while creating
-
-        horizontalLayout = QHBoxLayout(self)
-        horizontalLayout.setObjectName("horizontalLayout" + text)
-        checkbox = QCheckBox(text, self)
-        self.chhh.append(checkbox.text())
-        checkbox.stateChanged.connect(self.pp)
-        print("_".join(text.lower().split(" ")) + "_checkbox")
-        checkbox.setObjectName("_".join(text.lower().split(" ")) + "_checkbox")
-        horizontalLayout.addWidget(checkbox)
-
-        # settings the state based on the user settings
-        # checkbox.setChecked(MainPage.settings.value(settings))
-        return horizontalLayout
+        self.kategori_checkbox.stateChanged.connect(self.kategori_durumu)
 
     def kategori_durumu(self):
         kategori_durumu = self.kategori_checkbox.isChecked()
@@ -93,9 +61,9 @@ class Preferences(QDialog):
 class MainPage(QMainWindow):
     def __init__(self):
         super().__init__()
-        loadUi("mainn.ui", self)
-        self.tabWidget_2.removeTab(1)
+        loadUi("view/mainn.ui", self)
         self.ui = OrderPage()
+        self.cost_df = None
         ############################
         #         MENUBAR          #
         ############################
@@ -136,7 +104,32 @@ class MainPage(QMainWindow):
         self.settings = QSettings("Mustafa Gumustas", "StockManager")
 
         # ORDER PAGE SETTINGS
-        # created function from this continue_use(self)
+        #
+        #   !!!!    DEACTIVATED UNTIL COMPLETING FUNCTIONALITY  !!!!
+        #
+        # if self.settings.value("continue_use_selected_csv") == 16384:
+        #     # 16384 means yes
+        #     if self.settings.value("items_cost_file_name"):
+        #         self.button_loader()
+        #     else:
+        #         print("user wanted to load again but file not found")
+        # elif self.settings.value("continue_use_selected_csv") == 65536:
+        #     # 65536 means no
+        #     self.filename = self.file_opener()
+        #     self.cost_df = pd.read_csv(self.filename, sep=";")
+        #     self.button_loader()
+        # button loader function has changed, filename input required checkit!
+        #     self.continue_use = yes_no_gen(
+        #         self, message="Bu dosyayi daha sonra da kullanmak ister misiniz?"
+        #     )
+        #     self.settings.setValue("continue_use_selected_csv", self.continue_use)
+        #     if self.continue_use == 16384:
+        #         self.settings.setValue("items_cost_file_name", self.fileName)
+        #     else:
+        #         pass
+        #
+        #   !!!!    DEACTIVATED UNTIL COMPLETING FUNCTIONALITY  !!!!
+        #
 
         self.settings.value("kategori_kullanimi")
         ############################
@@ -154,8 +147,6 @@ class MainPage(QMainWindow):
         self.new_order()
 
         # button functions
-        # REMOVE BELOW LATER NONFUNCTIONAL ANYMORE
-        # self.button_loader()
         self.order_page_button.clicked.connect(
             lambda: self.stackedWidget.setCurrentWidget(self.page_1)
         )
@@ -170,26 +161,9 @@ class MainPage(QMainWindow):
         self.tableWidget.setColumnWidth(0, 250)
         self.tableWidget.setColumnWidth(1, 45)
 
-    def continue_use(self):
-        if self.settings.value("continue_use_selected_csv") == 16384:
-            # 16384 means yes
-            if self.settings.value("items_cost_file_name"):
-                self.button_loader()
-            else:
-                print("user wanted to load again but file not found")
-        elif self.settings.value("continue_use_selected_csv") == 65536:
-            # 65536 means no
-            self.filename = self.file_opener()
-            self.cost_df = pd.read_csv(self.filename, sep=";")
-            self.button_loader()
-            self.continue_use = yes_no_gen(
-                self, message="Bu dosyayi daha sonra da kullanmak ister misiniz?"
-            )
-            self.settings.setValue("continue_use_selected_csv", self.continue_use)
-            if self.continue_use == 16384:
-                self.settings.setValue("items_cost_file_name", self.fileName)
-            else:
-                pass
+    def change_cost_df(self, items_cost_file_name):
+        # changes the cost df and read, replaces it
+        self.cost_df = pd.read_csv(items_cost_file_name, sep=";")
 
     def item_add(self):
         self.win = Order_Enter()
@@ -213,11 +187,11 @@ class MainPage(QMainWindow):
             return new_customer_id
 
     @pyqtSlot()
-    def button_loader(self):
+    def button_loader(self, items_cost_file_name):
         self.new_button_pos_x = 0
         self.new_button_pos_y = 0
-        itttmes = pd.read_csv(self.settings.value("items_cost_file_name"), ";")
-        for i, item in enumerate(itttmes["Ürün"].values):
+        items_cost_file_name = pd.read_csv(items_cost_file_name, ";")
+        for i, item in enumerate(items_cost_file_name["Ürün"].values):
             if self.new_button_pos_y % 2 == 1:
                 self.urunbutonlari_layout.addLayout(
                     self.button_creator(item), self.new_button_pos_x, 1, 1, 1
@@ -228,6 +202,12 @@ class MainPage(QMainWindow):
                     self.button_creator(item), self.new_button_pos_x, 0, 1, 1
                 )
             self.new_button_pos_y += 1
+
+    def save_chooser(self):
+        name = QFileDialog.getSaveFileName(
+            self, ("Save File"), "", ("All Files (*.csv);;CSV Files (*.csv)")
+        )
+        return name
 
     def button_creator(self, text):
         Hlayout = QHBoxLayout(self)
@@ -270,7 +250,7 @@ class Stock_Editor(QDialog):
         # self.w = None
 
         # loading UI
-        loadUi("stok.ui", self)
+        loadUi("view/stok.ui", self)
 
         # setting width of columns
         self.tableWidget.setColumnWidth(0, 450)
@@ -500,21 +480,25 @@ class OrderPage(QDialog):
 class Order_Enter(QDialog):
     def __init__(self):
         super().__init__()
-        loadUi("order_enter.ui", self)
+        loadUi("view/order_enter.ui", self)
         self.setWindowTitle("Ürün Tablosu")
-        self.df_order = None
         self.setFixedSize(self.size())
 
         # removing second default tab
         self.tabWidget.removeTab(1)
 
         # loading items into table if user wanted to use the same file later
-
-        # WHY THERE IS IF ELSE IN HERE IDK GONNA FIND OUT LATER
-        if MainPage.settings.value("continue_use_selected_csv") == 16384:
-            self.order_loader()
-        else:
-            MainPage.continue_use()
+        #
+        #   !!!!    DEACTIVATED UNTIL COMPLETING FUNCTIONALITY  !!!!
+        #
+        # if MainPage.settings.value("continue_use_selected_csv") == 16384:
+        #     self.order_loader()
+        #     function changed becareful after removing comments
+        # else:
+        #     pass
+        #
+        #   !!!!    DEACTIVATED UNTIL COMPLETING FUNCTIONALITY  !!!!
+        #
 
         self.columns = ["Ürün", "Fiyat"]
 
@@ -556,37 +540,38 @@ class Order_Enter(QDialog):
         self.urun_tablosu.insertRow(self.rowPosition)
         self.onay_button.setAutoDefault(False)
         self.onay_button.clicked.connect(self.get_list)
-        self.load_from_file_btn.clicked.connect(self.give_file_name)
-
-        # self.cost_df = pd.read_csv(self.filename, sep=";")
-        # self.button_loader()
-
-        self.onay_button.clicked.connect(MainPage.button_loader)
+        self.load_from_file_btn.clicked.connect(self.cost_file_loader)
         self.fileName = MainPage.settings.value("items_cost_file_name")
 
-    def give_file_name(self):
-        # MainPage.settings.setValue = MainPage.file_opener()
-        print(MainPage.file_opener())
+    def cost_file_loader(self):
+        # this function is for making user select a file or fill the table
+        # in order to create item buttons.
+        filename = MainPage.file_opener()
+        self.order_loader(filename)
 
-    def order_loader(self):
-        self.df_order = pd.read_csv(
-            MainPage.settings.value("items_cost_file_name"), sep=";"
-        )
-        self.row = 0
-        self.urun_tablosu.setRowCount(len(self.df_order))
+    def order_loader(self, fileName):
+        # fills the order_table from given file
+        # fileName = MainPage.settings.value("items_cost_file_name")
+        self.df_order = pd.read_csv(fileName, sep=";")
         self.urun_sayisi.setValue(len(self.df_order))
+        self.urun_tablosu.setRowCount(0)
         for item, price in zip(self.df_order.Ürün, self.df_order.Fiyat):
-            self.urun_tablosu.setItem(self.row, 0, QTableWidgetItem(str(item)))
-            self.urun_tablosu.setItem(self.row, 1, QTableWidgetItem(str(price)))
-            self.row += 1
-        MainPage.button_loader()
+            rowPosition = self.urun_tablosu.rowCount()
+            self.urun_tablosu.insertRow(rowPosition)
+            self.urun_tablosu.setItem(rowPosition, 0, QTableWidgetItem(str(item)))
+            self.urun_tablosu.setItem(rowPosition, 1, QTableWidgetItem(str(price)))
+        MainPage.button_loader(fileName)
+        MainPage.change_cost_df(fileName)
+
+        # MainPage.button_loader()
 
     def set_length(self):
+        # sets the roder_table row count
         satir = self.urun_sayisi.value()
         self.urun_tablosu.setRowCount(int(satir))
 
     def get_list(self):
-        # save point
+        # saves the user selected order file
         # self.urun_tablosu.setRowCount(0)
         try:
             self.items = item_list(
@@ -606,8 +591,11 @@ class Order_Enter(QDialog):
                 )
             ]
             df_order = pd.DataFrame(data, columns=self.columns)
-
-            df_order.to_csv("cost_2.csv", sep=";", index=False)
+            save_to = MainPage.save_chooser()
+            df_order.to_csv(save_to[0], sep=";", index=False)
+            self.order_loader(save_to[0])
+            MainPage.button_loader(save_to[0])
+            MainPage.change_cost_df(save_to[0])
         except AttributeError:
             pop_up_gen(
                 "There are empty rows inside the items, please try again after filling them!"
@@ -654,9 +642,5 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
     MainPage = MainPage()
-    # to activate login page just decomment below 3 lines
-    # login = LoginPage()
-    # if login.exec_() == QtWidgets.QDialog.Accepted:
-    # MainPage = MainPage()
     MainPage.showMaximized()
     sys.exit(app.exec_())
