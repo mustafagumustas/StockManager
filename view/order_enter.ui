@@ -45,7 +45,42 @@
       <string>Tab 1</string>
      </attribute>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="1" column="0">
+      <item row="3" column="0">
+       <layout class="QHBoxLayout" name="kategori_ekle_layout">
+        <item>
+         <widget class="QLineEdit" name="kategori_ekle_edit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="new_tab_button">
+          <property name="text">
+           <string>Kategori Ekle</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="4" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QSpinBox" name="urun_sayisi"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="onay_button">
+          <property name="text">
+           <string>Onayla</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="0" column="0">
        <widget class="QTableWidget" name="urun_tablosu">
         <column>
          <property name="text">
@@ -59,40 +94,28 @@
         </column>
        </widget>
       </item>
-      <item row="0" column="0">
+      <item row="2" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>180</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
         <item>
          <widget class="QPushButton" name="load_from_file_btn">
           <property name="text">
-           <string>Dosyadan Yukle</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="new_tab_button">
-          <property name="text">
-           <string>Kategori Ekle</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QPushButton" name="pushButton_2">
-          <property name="text">
-           <string>Urunleri Duzenle</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="2" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QSpinBox" name="urun_sayisi"/>
-        </item>
-        <item>
-         <widget class="QPushButton" name="onay_button">
-          <property name="text">
-           <string>Onayla</string>
+           <string>Dosyadan yükle</string>
           </property>
          </widget>
         </item>
