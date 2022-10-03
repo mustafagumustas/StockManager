@@ -1,3 +1,4 @@
+from fileinput import filename
 import sys
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import *
@@ -15,9 +16,9 @@ class LoginPage(QDialog):
         loadUi("login.ui", self)
         self.admin_username = "must"
         self.admin_password = "1234"
-        self.login_button.clicked.connect(self.log_user)
+        self.login_button.clicked.connect(self.HandleLogin)
 
-    def log_user(self):
+    def HandleLogin(self):
         if (
             self.username.text() == self.admin_username
             and self.password.text() == self.admin_password
@@ -36,18 +37,48 @@ class Preferences(QDialog):
         super().__init__()
         loadUi("preferences.ui", self)
         self.setWindowTitle("Preferences")
-
+        self.chhh = []
         # kupon indirimi
-        self.kupon_indirimi_checkbox.setChecked(
-            MainPage.settings.value("pref_kupon_kodu_goster")
+        self.tercihler_layout.addLayout(
+            self.add_preff("Kupon indirimi", self.kupon_indirimi_gorunurluk)
         )
-        self.kupon_indirimi_checkbox.stateChanged.connect(
-            self.kupon_indirimi_gorunurluk
-        )
-        self.kategori_checkbox.setChecked(MainPage.settings.value("kategori_kullanimi"))
+        # self.kupon_indirimi_checkbox.setChecked(
+        #     MainPage.settings.value("pref_kupon_kodu_goster")
+        # )
+
+        # self.tercihler_layout.addLayout(self.add_preff("merhaba", Preferences.pp))
 
         # kategori
-        self.kategori_checkbox.stateChanged.connect(self.kategori_durumu)
+        self.tercihler_layout.addLayout(
+            self.add_preff("Kategori", self.kategori_durumu)
+        )
+
+        # self.kategori_checkbox.setChecked(MainPage.settings.value("kategori_kullanimi"))
+
+    def pp(self):
+        print("heyeyeyeyeye")
+
+    @pyqtSlot()
+    def add_preff(self, text, settings_key, **kwargs):
+        # creates preferences checkbox with name "text_checkbox"
+
+        # you must create the function before creting checkbox
+        # otherwise it won't work
+
+        # user must give the settings value name while creating
+
+        horizontalLayout = QHBoxLayout(self)
+        horizontalLayout.setObjectName("horizontalLayout" + text)
+        checkbox = QCheckBox(text, self)
+        self.chhh.append(checkbox.text())
+        checkbox.stateChanged.connect(self.pp)
+        print("_".join(text.lower().split(" ")) + "_checkbox")
+        checkbox.setObjectName("_".join(text.lower().split(" ")) + "_checkbox")
+        horizontalLayout.addWidget(checkbox)
+
+        # settings the state based on the user settings
+        # checkbox.setChecked(MainPage.settings.value(settings))
+        return horizontalLayout
 
     def kategori_durumu(self):
         kategori_durumu = self.kategori_checkbox.isChecked()
@@ -483,7 +514,7 @@ class Order_Enter(QDialog):
         if MainPage.settings.value("continue_use_selected_csv") == 16384:
             self.order_loader()
         else:
-            self.order_loader()
+            MainPage.continue_use()
 
         self.columns = ["Ürün", "Fiyat"]
 
@@ -525,10 +556,17 @@ class Order_Enter(QDialog):
         self.urun_tablosu.insertRow(self.rowPosition)
         self.onay_button.setAutoDefault(False)
         self.onay_button.clicked.connect(self.get_list)
-        self.load_from_file_btn.clicked.connect(MainPage.file_opener)
+        self.load_from_file_btn.clicked.connect(self.give_file_name)
+
+        # self.cost_df = pd.read_csv(self.filename, sep=";")
+        # self.button_loader()
 
         self.onay_button.clicked.connect(MainPage.button_loader)
         self.fileName = MainPage.settings.value("items_cost_file_name")
+
+    def give_file_name(self):
+        # MainPage.settings.setValue = MainPage.file_opener()
+        print(MainPage.file_opener())
 
     def order_loader(self):
         self.df_order = pd.read_csv(
@@ -615,9 +653,10 @@ class customer:
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon("logo.jpg"))
+    MainPage = MainPage()
+    # to activate login page just decomment below 3 lines
+    # login = LoginPage()
+    # if login.exec_() == QtWidgets.QDialog.Accepted:
     # MainPage = MainPage()
-    login = LoginPage()
-    if login.exec_() == QtWidgets.QDialog.Accepted:
-        MainPage = MainPage()
-        MainPage.showMaximized()
-        sys.exit(app.exec_())
+    MainPage.showMaximized()
+    sys.exit(app.exec_())
